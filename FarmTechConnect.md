@@ -1,6 +1,4 @@
-Certainly! Here's the entire project documentation for **AgriTech Connect** written in pure `.md` (Markdown) format:
 
----
 
 ```markdown
 # 🌾 AgriTech Connect – Project Documentation
@@ -9,7 +7,7 @@ Certainly! Here's the entire project documentation for **AgriTech Connect** writ
 
 **AgriTech Connect** is a Django-based web platform designed to digitize and streamline agricultural services. It aims to connect farmers, agri-experts, vendors, and consumers to improve productivity, knowledge sharing, and market access.
 
----
+
 
 ## ✅ Core Project Requirements
 
@@ -47,7 +45,7 @@ Certainly! Here's the entire project documentation for **AgriTech Connect** writ
 - Manage users, posts, products
 - View platform analytics
 
----
+
 
 ## 🛠 Technical Requirements
 
@@ -70,7 +68,6 @@ Certainly! Here's the entire project documentation for **AgriTech Connect** writ
 ### Storage
 - Media/Image Uploads (Cloudinary, S3)
 
----
 
 ## 🧱 Suggested Project Structure
 
