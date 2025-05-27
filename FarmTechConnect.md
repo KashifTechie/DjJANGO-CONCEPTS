@@ -1,4 +1,3 @@
-Here's the AgriTech Connect project documentation in Markdown (`.md`) format:
 
 ```markdown
 # AgriTech Connect - Project Documentation
@@ -147,4 +146,4 @@ django-allauth==0.58
 - Emphasis (`**bold**`, *italic*)
 - Horizontal rules (`---`)
 
-You can save this directly as `agritech_connect.md` and render it in GitHub/GitLab or any Markdown viewer.
+
