@@ -1,6 +1,3 @@
-Certainly! Here's the entire **AgriTech Connect** project documentation in proper Markdown (`.md`) format from start to end—ready to be used as a standalone documentation file like `README.md`.
-
----
 
 ```md
 # 🌾 AgriTech Connect – Project Documentation
@@ -240,11 +237,4 @@ class Article(models.Model):
 * [x] Optional: IoT support (sensors)
 * [x] Optional: AI crop recommendation
 
----
 
-Let me know if you'd like to expand this with admin configurations, serializers, API views, or deployment scripts.
-
-```
-
-Let me know if you want this broken into separate files or turned into a `docs/` directory structure for a GitHub project.
-```
