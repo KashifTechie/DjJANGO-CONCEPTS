@@ -90,9 +90,8 @@ agritech\_connect/
 ├── urls.py              # URL configs
 └── asgi.py              # ASGI config for Channels
 
-````
+```
 
----
 
 ## 📦 Django Applications and Models
 
@@ -116,7 +115,7 @@ class Profile(models.Model):
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
     address = models.TextField(blank=True)
     region = models.CharField(max_length=100, blank=True)
-````
+```
 
 ---
 
@@ -141,8 +140,6 @@ class Answer(models.Model):
     answer_text = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
 ```
-
----
 
 ### 3. `marketplace` – E-commerce
 
@@ -177,7 +174,7 @@ class WeatherData(models.Model):
     retrieved_at = models.DateTimeField(auto_now_add=True)
 ```
 
----
+
 
 ### 5. `chat` – Real-time Messaging
 
