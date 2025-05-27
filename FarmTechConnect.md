@@ -1,126 +1,264 @@
+Certainly! Here's the entire project documentation for **AgriTech Connect** written in pure `.md` (Markdown) format:
+
+---
 
 ```markdown
-# AgriTech Connect - Project Documentation
+# 🌾 AgriTech Connect – Project Documentation
 
-## Project Overview
-**AgriTech Connect** is a web-based platform designed to bridge the gap between farmers, suppliers, agri-experts, and consumers. It will include features like:
-- Farmer & Supplier Marketplace
-- Crop & Soil Monitoring (IoT Integration)
-- Weather Forecasting
-- Agri-Expert Consultation
-- E-commerce for Agri-products
-- Real-time Notifications & Alerts
-- Data Analytics & Reporting
+## 🚀 Project Overview
+
+**AgriTech Connect** is a Django-based web platform designed to digitize and streamline agricultural services. It aims to connect farmers, agri-experts, vendors, and consumers to improve productivity, knowledge sharing, and market access.
 
 ---
 
-## Technical Requirements
-### 1. Core Django Features
-- **Models & Database Design** (PostgreSQL)
-- **Views (Class-Based & Function-Based)**
-- **Templates & Static Files** (TailwindCSS/Bootstrap)
-- **Forms & ModelForms**
-- **User Authentication** (Custom User Model)
-- **Permissions & Groups**
-- **Middleware & Context Processors**
-- **Signals**
-- **Admin Customization**
-- **REST API** (Django REST Framework)
-- **Testing** (Unit Tests, Integration Tests)
-- **Deployment** (Docker, Gunicorn, Nginx, AWS/GCP)
+## ✅ Core Project Requirements
 
-### 2. Advanced Django Features
-- **Celery** (Asynchronous tasks - emails, reports)
-- **Redis** (Caching & Celery backend)
-- **Websockets** (Django Channels for real-time notifications)
-- **Django-Q/Django Background Tasks** (Alternative to Celery)
-- **Django Crispy Forms** (Enhanced form rendering)
-- **Django Allauth** (Social Authentication)
-- **Django Filter** (Advanced filtering)
-- **Django Guardian** (Object-level permissions)
-- **Django Debug Toolbar** (Performance optimization)
+### 1. **User Roles and Authentication**
+- Farmers
+- Agri Experts / Advisors
+- Buyers / Retailers
+- Admin
+- Login/Register using Email/Phone
+- Role-based access control
 
-### 3. Third-Party Integrations
-- **Payment Gateway**: Stripe/Razorpay
-- **Weather API**: OpenWeatherMap
-- **Google Maps API** (Location services)
-- **Twilio/SendGrid** (SMS/Email Notifications)
-- **IoT Integration** (MQTT Protocol for sensor data)
-- **Chart.js/D3.js** (Analytics dashboards)
+### 2. **Key Features**
 
-### 4. Security & Performance
-- HTTPS (SSL/TLS)
-- CORS (Django CORS Headers)
-- Rate Limiting
-- CSRF & Session Security
-- Query Optimization (`select_related`, `prefetch_related`)
-- Database Indexing
-- Caching (Redis, Django Cache Framework)
+#### 👨‍🌾 Farmer Dashboard
+- View crop suggestions based on region & season
+- Upload questions (images/text) for expert help
+- Get weather updates and agri news
+- Access learning materials or agri blogs
+
+#### 📘 Expert Dashboard
+- Answer farmer queries
+- Share tips and guides
+- Schedule live sessions or consultations
+
+#### 🛒 Marketplace
+- Farmers sell produce online
+- Buyers purchase seeds, tools, etc.
+- Product listings with price and availability
+
+#### 💬 Chat & Forum (Optional)
+- Real-time chat (Django Channels)
+- Community forum
+
+#### 📈 Admin Panel
+- Manage users, posts, products
+- View platform analytics
 
 ---
 
-## Django Applications Structure
-| App Name         | Purpose                          | Shared Models (Key)              |
-|------------------|----------------------------------|-----------------------------------|
-| **accounts**     | User auth & profiles             | `CustomUser`, `UserProfile`       |
-| **farmers**      | Farmer profiles & listings       | `Farmer`, `Farm`, `Crop`          |
-| **suppliers**    | Agri-product listings            | `Supplier`, `Product`             |
-| **marketplace**  | E-commerce system                | `Order`, `Cart`, `Payment`        |
-| **experts**      | Expert consultation              | `Expert`, `ConsultationSlot`      |
-| **weather**      | Forecasts & alerts               | `WeatherData`, `Alert`            |
-| **analytics**    | Data visualization               | `Report`, `Dashboard`             |
-| **notifications**| Real-time alerts                 | `Notification`                    |
-| **iot**          | Crop/soil monitoring             | `Sensor`, `SensorData`            |
-| **api**          | REST API endpoints               | (Uses models from other apps)     |
+## 🛠 Technical Requirements
+
+### Backend
+- Django 4.x+
+- Django REST Framework
+- Django Channels (for real-time features)
+- PostgreSQL or SQLite
+- Celery + Redis (for async tasks)
+
+### Frontend
+- Django Templates or React/Vue frontend
+- Bootstrap or TailwindCSS
+
+### APIs
+- REST APIs for SPA/Mobile
+- External Weather API
+- Crop recommendation logic (ML or external)
+
+### Storage
+- Media/Image Uploads (Cloudinary, S3)
 
 ---
 
-## Shared Models (Cross-App Usage)
+## 🧱 Suggested Project Structure
+
+```
+
+agritech\_connect/
+│
+├── users/               # User management
+├── marketplace/         # Buy/Sell logic
+├── advisory/            # Crop queries and answers
+├── chat/                # Messaging
+├── weather/             # Weather integration
+├── content/             # Blog and educational articles
+├── notifications/       # Email/SMS notifications
+├── api/                 # DRF endpoints
+├── templates/           # HTML templates
+├── static/              # CSS, JS, assets
+├── media/               # Uploaded files
+├── settings.py          # Django settings
+├── urls.py              # URL configs
+└── asgi.py              # ASGI config for Channels
+
+````
+
+---
+
+## 📦 Django Applications and Models
+
+### 1. `users` – User Management & Roles
+
 ```python
-# accounts/models.py
+from django.contrib.auth.models import AbstractUser
+from django.db import models
+
 class CustomUser(AbstractUser):
-    USER_TYPES = [
-        ('FARMER', 'Farmer'),
-        ('SUPPLIER', 'Supplier'),
-        ('EXPERT', 'Expert'),
-        ('CONSUMER', 'Consumer')
-    ]
-    user_type = models.CharField(max_length=10, choices=USER_TYPES)
-    phone = models.CharField(max_length=15)
+    USER_TYPES = (
+        ('farmer', 'Farmer'),
+        ('expert', 'Agri Expert'),
+        ('buyer', 'Buyer'),
+        ('admin', 'Admin'),
+    )
+    user_type = models.CharField(max_length=20, choices=USER_TYPES)
+    phone_number = models.CharField(max_length=15, unique=True)
 
-class UserProfile(models.Model):
+class Profile(models.Model):
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
-    bio = models.TextField(blank=True)
-    location = models.CharField(max_length=100)
+    address = models.TextField(blank=True)
+    region = models.CharField(max_length=100, blank=True)
+````
 
-# notifications/models.py
-class Notification(models.Model):
-    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
-    message = models.TextField()
-    is_read = models.BooleanField(default=False)
+---
+
+### 2. `advisory` – Crop Consultation & Expert Advice
+
+```python
+class Crop(models.Model):
+    name = models.CharField(max_length=100)
+    season = models.CharField(max_length=100)
+    region = models.CharField(max_length=100)
+    description = models.TextField()
+
+class Query(models.Model):
+    farmer = models.ForeignKey('users.CustomUser', on_delete=models.CASCADE, related_name='queries')
+    question = models.TextField()
+    image = models.ImageField(upload_to='queries/', null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+class Answer(models.Model):
+    expert = models.ForeignKey('users.CustomUser', on_delete=models.CASCADE)
+    query = models.ForeignKey(Query, on_delete=models.CASCADE, related_name='answers')
+    answer_text = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
 ```
 
 ---
 
-## Development Roadmap
-1. **Setup**
-   ```bash
-   django-admin startproject agritech_connect
-   python -m venv venv
-   pip install django celery redis django-rest-framework
-   ```
-2. **Core Features**
-   - Implement `accounts` app with JWT auth
-   - Build farmer/supplier marketplace
-3. **Advanced Integration**
-   - Configure Celery + Redis
-   - Add Django Channels for WebSockets
-4. **Deployment**
-   - Dockerize application
-   - CI/CD pipeline (GitHub Actions)
+### 3. `marketplace` – E-commerce
+
+```python
+class Product(models.Model):
+    seller = models.ForeignKey('users.CustomUser', on_delete=models.CASCADE)
+    name = models.CharField(max_length=200)
+    description = models.TextField()
+    price = models.DecimalField(max_digits=10, decimal_places=2)
+    quantity = models.PositiveIntegerField()
+    image = models.ImageField(upload_to='products/')
+    is_available = models.BooleanField(default=True)
+
+class Order(models.Model):
+    buyer = models.ForeignKey('users.CustomUser', on_delete=models.CASCADE)
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    quantity = models.PositiveIntegerField()
+    total_price = models.DecimalField(max_digits=10, decimal_places=2)
+    order_date = models.DateTimeField(auto_now_add=True)
+```
 
 ---
+
+### 4. `weather` – Regional Weather Updates
+
+```python
+class WeatherData(models.Model):
+    region = models.CharField(max_length=100)
+    temperature = models.FloatField()
+    humidity = models.FloatField()
+    forecast = models.TextField()
+    retrieved_at = models.DateTimeField(auto_now_add=True)
+```
+
+---
+
+### 5. `chat` – Real-time Messaging
+
+```python
+class ChatRoom(models.Model):
+    farmer = models.ForeignKey('users.CustomUser', related_name='farmer_rooms', on_delete=models.CASCADE)
+    expert = models.ForeignKey('users.CustomUser', related_name='expert_rooms', on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+class Message(models.Model):
+    room = models.ForeignKey(ChatRoom, on_delete=models.CASCADE, related_name='messages')
+    sender = models.ForeignKey('users.CustomUser', on_delete=models.CASCADE)
+    content = models.TextField()
+    timestamp = models.DateTimeField(auto_now_add=True)
+```
+
+---
+
+### 6. `notifications` – Alerts
+
+```python
+class Notification(models.Model):
+    recipient = models.ForeignKey('users.CustomUser', on_delete=models.CASCADE)
+    message = models.TextField()
+    is_read = models.BooleanField(default=False)
+    sent_at = models.DateTimeField(auto_now_add=True)
+```
+
+---
+
+### 7. `content` – Blogs & Articles
+
+```python
+class Article(models.Model):
+    title = models.CharField(max_length=200)
+    content = models.TextField()
+    author = models.ForeignKey('users.CustomUser', on_delete=models.SET_NULL, null=True)
+    published_at = models.DateTimeField(auto_now_add=True)
+```
+
+---
+
+## 📊 Summary of Django Applications
+
+| App Name        | Description                         | Key Models                |
+| --------------- | ----------------------------------- | ------------------------- |
+| `users`         | User roles, auth, profiles          | `CustomUser`, `Profile`   |
+| `advisory`      | Q\&A with experts, crop suggestions | `Crop`, `Query`, `Answer` |
+| `marketplace`   | Product listing and transactions    | `Product`, `Order`        |
+| `weather`       | Region-based weather updates        | `WeatherData`             |
+| `chat`          | Messaging between users             | `ChatRoom`, `Message`     |
+| `notifications` | Alerts and announcements            | `Notification`            |
+| `content`       | Blogs and educational material      | `Article`                 |
+
+---
+
+## 📋 Final Requirements Checklist
+
+* [x] User authentication (custom model)
+* [x] Farmer, Expert, Buyer dashboards
+* [x] Question-Answer advisory system
+* [x] E-commerce for products and produce
+* [x] Real-time chat (WebSocket/Django Channels)
+* [x] Weather data integration
+* [x] Content/blog module
+* [x] Notification system
+* [x] API layer using DRF
+* [x] Asynchronous tasks (Celery + Redis)
+* [x] Optional: IoT support (sensors)
+* [x] Optional: AI crop recommendation
+
+---
+
+Let me know if you'd like the `.admin.py`, `serializers.py`, or sample `urls.py` files next!
+
+```
+```
+
 
 ## Dependencies
 ```requirements.txt
