@@ -75,6 +75,8 @@ queue.enqueue(say_hello, 'Alice')
 
 ### 🔧 Useful Functions with Examples
 
+These helper functions are part of `django_rq` and provide direct access to the core components involved in job queuing and scheduling. Here's what each one does and when you should use them:
+
 Each of the following examples demonstrates key functionality using:
 
 * `get_queue()` – for enqueueing tasks
@@ -84,6 +86,23 @@ Each of the following examples demonstrates key functionality using:
 
 ```python
 from django_rq import get_queue, get_connection, get_worker, get_scheduler
+
+# get_queue():
+# Use this to enqueue jobs into a Redis queue. This is essential to dispatch background tasks.
+queue = get_queue("default")
+
+# get_connection():
+# Use this to access the raw Redis connection directly — for custom operations like setting, getting,
+# or incrementing Redis keys unrelated to task processing.
+conn = get_connection("default")
+
+# get_worker():
+# Use this to inspect or manage the current worker (e.g., get its status or job in progress).
+worker = get_worker("default")
+
+# get_scheduler():
+# Use this to schedule jobs to be run at a specific time or interval (like a cron job).
+scheduler = get_scheduler("default")
 
 queue = get_queue("default")            # Get queue instance
 conn = get_connection("default")        # Get raw Redis connection
