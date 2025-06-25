@@ -118,8 +118,39 @@ queue = get_queue("default")
 queue.enqueue(say_hello, 'Enqueued Now')
 ```
 
-**Connection Example**
+### 🔍 How This Works in Detail
 
+1. **Enqueueing**:
+
+   * `queue.enqueue(...)` pushes a job into a Redis list under the `rq:queue:default` key.
+   * The job is serialized (function path, args, kwargs) and given a unique job ID.
+
+2. **Storage**:
+
+   * RQ stores the job data in Redis hashes (like `rq:job:<job_id>`) and the queue name holds a list of job IDs waiting to be processed.
+
+3. **Execution**:
+
+   * A separate RQ **worker** process (started using `python manage.py rqworker`) constantly polls the Redis queue.
+   * When it finds a job, it pulls the job ID, fetches the job data, and executes the task function (e.g., `say_hello('Enqueued Now')`).
+
+4. **Completion**:
+
+   * Once executed, the job’s result, status (`finished`, `failed`, etc.), and execution metadata are saved in Redis for tracking.
+
+5. **Monitoring**:
+
+   * You can view job history in the Django Admin at `/django-rq/`.
+
+### 🧠 Notes
+
+* If no worker is running, the job stays in Redis but is never executed.
+* Multiple workers can consume from the same queue for concurrency.
+* Delayed jobs should use `get_scheduler().enqueue_in(...)`.
+
+````
+
+**Connection Example**
 ```python
 conn = get_connection("default")
 
@@ -132,7 +163,7 @@ conn.incr("my_counter")
 conn.incr("my_counter")
 conn.decr("my_counter")
 print(conn.get("my_counter"))  # Output: b'1'
-```
+````
 
 **Worker Example**
 
