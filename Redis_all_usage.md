@@ -407,5 +407,3 @@ r.info()
 | Session backend           | ❌                     | ✅                         | ✅ (manually)                              |
 
 ---
-
-Would you like me to export this as a **PDF cheat sheet** (nicely formatted, ready to keep offline)?
