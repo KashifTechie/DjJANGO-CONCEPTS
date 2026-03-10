@@ -1,0 +1,1906 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Apache Kafka — Production Guide</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e1a;
+    --surface: #111827;
+    --surface2: #1a2235;
+    --border: #1e2d45;
+    --accent: #00d4ff;
+    --accent2: #7c3aed;
+    --accent3: #10b981;
+    --accent4: #f59e0b;
+    --danger: #ef4444;
+    --text: #e2e8f0;
+    --text-dim: #64748b;
+    --text-muted: #94a3b8;
+    --producer: #0ea5e9;
+    --consumer: #10b981;
+    --kafka: #7c3aed;
+    --broker: #f59e0b;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 15px;
+    line-height: 1.7;
+    overflow-x: hidden;
+  }
+
+  /* ── HERO ── */
+  .hero {
+    background: linear-gradient(135deg, #0a0e1a 0%, #0d1b2e 50%, #0a0e1a 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 60px 40px 50px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -80px; right: -80px;
+    width: 400px; height: 400px;
+    background: radial-gradient(circle, rgba(0,212,255,0.06) 0%, transparent 70%);
+    border-radius: 50%;
+  }
+  .hero::after {
+    content: '';
+    position: absolute;
+    bottom: -60px; left: 20%;
+    width: 300px; height: 300px;
+    background: radial-gradient(circle, rgba(124,58,237,0.05) 0%, transparent 70%);
+    border-radius: 50%;
+  }
+  .hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(0,212,255,0.08);
+    border: 1px solid rgba(0,212,255,0.2);
+    border-radius: 20px;
+    padding: 4px 14px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 20px;
+  }
+  .hero h1 {
+    font-size: 42px;
+    font-weight: 700;
+    letter-spacing: -1px;
+    line-height: 1.1;
+    margin-bottom: 16px;
+    background: linear-gradient(135deg, #fff 30%, #00d4ff 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .hero p {
+    color: var(--text-muted);
+    max-width: 600px;
+    font-size: 16px;
+    font-weight: 300;
+  }
+  .hero-tags {
+    display: flex;
+    gap: 10px;
+    margin-top: 24px;
+    flex-wrap: wrap;
+  }
+  .tag {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 4px 12px;
+    font-size: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text-muted);
+  }
+
+  /* ── LAYOUT ── */
+  .layout {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    min-height: calc(100vh - 200px);
+  }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 32px 0;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+  }
+  .sidebar-section {
+    padding: 0 20px;
+    margin-bottom: 24px;
+  }
+  .sidebar-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    padding: 0 20px;
+    margin-bottom: 8px;
+  }
+  .sidebar a {
+    display: block;
+    padding: 7px 20px;
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 13px;
+    border-left: 2px solid transparent;
+    transition: all 0.15s;
+  }
+  .sidebar a:hover {
+    color: var(--accent);
+    border-left-color: var(--accent);
+    background: rgba(0,212,255,0.04);
+  }
+
+  /* ── CONTENT ── */
+  .content {
+    padding: 48px 52px;
+    max-width: 960px;
+  }
+
+  /* ── SECTIONS ── */
+  .section {
+    margin-bottom: 72px;
+  }
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 32px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .section-num {
+    width: 32px; height: 32px;
+    background: linear-gradient(135deg, var(--accent2), var(--accent));
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 700;
+    color: #fff;
+    flex-shrink: 0;
+  }
+  .section-title {
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: -0.5px;
+  }
+
+  /* ── CODE BLOCKS ── */
+  .code-block {
+    background: #080d18;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    margin: 20px 0;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .code-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    background: rgba(255,255,255,0.03);
+    border-bottom: 1px solid var(--border);
+  }
+  .code-filename {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+  .code-lang {
+    font-size: 10px;
+    background: rgba(0,212,255,0.1);
+    color: var(--accent);
+    padding: 2px 8px;
+    border-radius: 4px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  pre {
+    padding: 20px;
+    font-size: 13px;
+    line-height: 1.8;
+    overflow-x: auto;
+    color: #c9d1d9;
+  }
+  .kw { color: #ff79c6; }
+  .fn { color: #8be9fd; }
+  .str { color: #f1fa8c; }
+  .cm { color: #6272a4; font-style: italic; }
+  .num { color: #bd93f9; }
+  .var { color: #50fa7b; }
+  .key { color: #ff79c6; }
+
+  /* ── EXPLANATION CARDS ── */
+  .explain-grid {
+    display: grid;
+    gap: 16px;
+    margin: 24px 0;
+  }
+  .explain-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px 22px;
+    position: relative;
+    overflow: hidden;
+  }
+  .explain-card::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    border-radius: 3px 0 0 3px;
+  }
+  .explain-card.blue::before { background: var(--producer); }
+  .explain-card.purple::before { background: var(--kafka); }
+  .explain-card.green::before { background: var(--consumer); }
+  .explain-card.yellow::before { background: var(--broker); }
+  .explain-card.red::before { background: var(--danger); }
+  .explain-card h4 {
+    font-size: 13px;
+    font-weight: 600;
+    font-family: 'JetBrains Mono', monospace;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .explain-card.blue h4 { color: var(--producer); }
+  .explain-card.purple h4 { color: var(--kafka); }
+  .explain-card.green h4 { color: var(--consumer); }
+  .explain-card.yellow h4 { color: var(--broker); }
+  .explain-card.red h4 { color: var(--danger); }
+  .explain-card p {
+    font-size: 13.5px;
+    color: var(--text-muted);
+    line-height: 1.65;
+  }
+  .explain-card .options {
+    margin-top: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .opt {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 3px 10px;
+    font-size: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text-muted);
+  }
+  .opt.active {
+    background: rgba(0,212,255,0.1);
+    border-color: rgba(0,212,255,0.3);
+    color: var(--accent);
+  }
+
+  /* ── FLOW DIAGRAMS ── */
+  .diagram-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 32px;
+    margin: 28px 0;
+  }
+  .diagram-title {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 28px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .diagram-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* Producer lifecycle diagram */
+  .flow {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    overflow-x: auto;
+    padding-bottom: 8px;
+  }
+  .flow-node {
+    flex-shrink: 0;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    text-align: center;
+    min-width: 100px;
+  }
+  .flow-node .node-icon {
+    font-size: 20px;
+    margin-bottom: 6px;
+  }
+  .flow-node .node-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 3px;
+  }
+  .flow-node .node-sub {
+    font-size: 10px;
+    color: var(--text-dim);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .flow-node.producer { border-color: rgba(14,165,233,0.4); background: rgba(14,165,233,0.06); }
+  .flow-node.buffer  { border-color: rgba(245,158,11,0.4); background: rgba(245,158,11,0.06); }
+  .flow-node.broker  { border-color: rgba(124,58,237,0.4); background: rgba(124,58,237,0.06); }
+  .flow-node.ack     { border-color: rgba(16,185,129,0.4); background: rgba(16,185,129,0.06); }
+  .flow-node.error   { border-color: rgba(239,68,68,0.4); background: rgba(239,68,68,0.06); }
+
+  .flow-arrow {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0 6px;
+    min-width: 60px;
+  }
+  .flow-arrow .arrow-label {
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+    white-space: nowrap;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .flow-arrow .arrow-line {
+    display: flex;
+    align-items: center;
+    width: 100%;
+  }
+  .flow-arrow .line {
+    flex: 1;
+    height: 2px;
+    background: var(--border);
+  }
+  .flow-arrow .arrowhead {
+    width: 0; height: 0;
+    border-top: 5px solid transparent;
+    border-bottom: 5px solid transparent;
+    border-left: 8px solid var(--border);
+  }
+
+  /* Sequence / timeline diagram */
+  .sequence {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 0;
+    position: relative;
+  }
+  .seq-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+  }
+  .seq-actor {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 16px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 16px;
+    white-space: nowrap;
+  }
+  .seq-actor.a { border-color: rgba(14,165,233,0.4); color: var(--producer); }
+  .seq-actor.b { border-color: rgba(124,58,237,0.4); color: var(--kafka); }
+  .seq-actor.c { border-color: rgba(16,185,129,0.4); color: var(--consumer); }
+  .seq-lifeline {
+    width: 2px;
+    background: var(--border);
+    flex: 1;
+    min-height: 200px;
+  }
+
+  /* When diagram */
+  .when-diagram {
+    margin: 24px 0;
+  }
+  .when-row {
+    display: grid;
+    grid-template-columns: 160px 40px 1fr;
+    align-items: start;
+    gap: 0;
+    margin-bottom: 14px;
+  }
+  .when-trigger {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    padding: 10px 14px;
+    font-size: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text-muted);
+    text-align: right;
+  }
+  .when-connector {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    padding-top: 12px;
+  }
+  .when-connector .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    flex-shrink: 0;
+  }
+  .when-connector .line-h {
+    width: 40px; height: 2px;
+    background: var(--border);
+    position: relative;
+  }
+  .when-arrow-row {
+    display: flex;
+    align-items: center;
+    gap: 0;
+  }
+  .when-h-line {
+    flex: 1;
+    height: 2px;
+    background: var(--border);
+  }
+  .when-h-arrow {
+    width: 0; height: 0;
+    border-top: 4px solid transparent;
+    border-bottom: 4px solid transparent;
+    border-left: 7px solid var(--border);
+  }
+  .when-result {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    padding: 10px 14px;
+    font-size: 13px;
+    color: var(--text);
+  }
+  .when-result strong {
+    font-size: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--accent);
+  }
+  .when-result p {
+    font-size: 12.5px;
+    color: var(--text-muted);
+    margin-top: 4px;
+    line-height: 1.5;
+  }
+
+  /* Batch diagram */
+  .batch-vis {
+    display: flex;
+    align-items: flex-end;
+    gap: 12px;
+    margin: 16px 0;
+    padding: 20px;
+    background: var(--surface2);
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    overflow-x: auto;
+  }
+  .batch-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+  .batch-bar {
+    width: 32px;
+    border-radius: 4px 4px 0 0;
+    transition: all 0.3s;
+  }
+  .batch-bar.partial { background: rgba(245,158,11,0.4); border: 1px solid rgba(245,158,11,0.3); }
+  .batch-bar.full    { background: rgba(16,185,129,0.4); border: 1px solid rgba(16,185,129,0.3); }
+  .batch-bar.over    { background: rgba(239,68,68,0.4); border: 1px solid rgba(239,68,68,0.3); }
+  .batch-label {
+    font-size: 10px;
+    color: var(--text-dim);
+    font-family: 'JetBrains Mono', monospace;
+    white-space: nowrap;
+  }
+
+  /* Config table */
+  .config-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+    font-size: 13px;
+  }
+  .config-table th {
+    text-align: left;
+    padding: 10px 14px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .config-table td {
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    vertical-align: top;
+    line-height: 1.5;
+  }
+  .config-table tr:hover td {
+    background: rgba(255,255,255,0.015);
+  }
+  .config-table .param {
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--accent);
+    white-space: nowrap;
+    font-size: 12px;
+  }
+  .config-table .val {
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--accent4);
+    font-size: 12px;
+  }
+  .config-table .desc { color: var(--text-muted); }
+  .config-table .impact {
+    font-size: 11px;
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .impact-high { background: rgba(239,68,68,0.1); color: #ef4444; }
+  .impact-med  { background: rgba(245,158,11,0.1); color: #f59e0b; }
+  .impact-perf { background: rgba(16,185,129,0.1); color: #10b981; }
+
+  /* Tips */
+  .tip {
+    display: flex;
+    gap: 12px;
+    background: rgba(0,212,255,0.04);
+    border: 1px solid rgba(0,212,255,0.15);
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin: 14px 0;
+  }
+  .tip-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+  .tip-body { font-size: 13px; color: var(--text-muted); line-height: 1.6; }
+  .tip-body strong { color: var(--accent); font-size: 12px; }
+  .tip.warn { background: rgba(245,158,11,0.04); border-color: rgba(245,158,11,0.2); }
+  .tip.warn .tip-body strong { color: var(--broker); }
+  .tip.danger { background: rgba(239,68,68,0.04); border-color: rgba(239,68,68,0.2); }
+  .tip.danger .tip-body strong { color: var(--danger); }
+  .tip.success { background: rgba(16,185,129,0.04); border-color: rgba(16,185,129,0.2); }
+  .tip.success .tip-body strong { color: var(--consumer); }
+
+  /* Partition diagram */
+  .partition-viz {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin: 16px 0;
+  }
+  .partition {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .partition-header {
+    padding: 8px 12px;
+    font-size: 11px;
+    font-weight: 600;
+    font-family: 'JetBrains Mono', monospace;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+  }
+  .partition-header.p0 { background: rgba(14,165,233,0.1); color: var(--producer); }
+  .partition-header.p1 { background: rgba(124,58,237,0.1); color: var(--kafka); }
+  .partition-header.p2 { background: rgba(16,185,129,0.1); color: var(--consumer); }
+  .partition-messages {
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .partition-msg {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 8px;
+    background: rgba(255,255,255,0.03);
+    border-radius: 4px;
+    font-size: 11px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .offset-badge {
+    color: var(--text-dim);
+    width: 24px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+  .msg-key { color: var(--accent4); }
+  .msg-val { color: var(--text-muted); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* Acknowledgement states diagram */
+  .ack-states {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin: 16px 0;
+  }
+  .ack-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    text-align: center;
+  }
+  .ack-card .ack-val {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+  .ack-card .ack-name {
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--text);
+  }
+  .ack-card .ack-desc {
+    font-size: 11.5px;
+    color: var(--text-dim);
+    line-height: 1.5;
+  }
+  .ack-card .ack-risk {
+    margin-top: 10px;
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    display: inline-block;
+  }
+  .ack-card:nth-child(1) .ack-val { color: var(--danger); }
+  .ack-card:nth-child(1) { border-color: rgba(239,68,68,0.2); }
+  .ack-card:nth-child(1) .ack-risk { background: rgba(239,68,68,0.1); color: var(--danger); }
+  .ack-card:nth-child(2) .ack-val { color: var(--broker); }
+  .ack-card:nth-child(2) { border-color: rgba(245,158,11,0.2); }
+  .ack-card:nth-child(2) .ack-risk { background: rgba(245,158,11,0.1); color: var(--broker); }
+  .ack-card:nth-child(3) .ack-val { color: var(--consumer); }
+  .ack-card:nth-child(3) { border-color: rgba(16,185,129,0.2); }
+  .ack-card:nth-child(3) .ack-risk { background: rgba(16,185,129,0.1); color: var(--consumer); }
+
+  /* Consumer offset diagram */
+  .offset-diagram {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    margin: 16px 0;
+    overflow-x: auto;
+  }
+  .offset-track {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin-bottom: 16px;
+  }
+  .offset-msg {
+    width: 52px; height: 52px;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border);
+    flex-shrink: 0;
+    position: relative;
+  }
+  .offset-msg .o-num {
+    font-size: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text-dim);
+  }
+  .offset-msg .o-state {
+    font-size: 16px;
+  }
+  .offset-msg.committed { background: rgba(16,185,129,0.08); border-color: rgba(16,185,129,0.3); }
+  .offset-msg.current   { background: rgba(0,212,255,0.1); border-color: rgba(0,212,255,0.4); }
+  .offset-msg.pending   { background: rgba(245,158,11,0.06); border-color: rgba(245,158,11,0.2); }
+  .offset-msg.unread    { background: rgba(255,255,255,0.02); }
+  .offset-connector { width: 12px; height: 2px; background: var(--border); flex-shrink: 0; }
+  .offset-legend {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+  .legend-dot {
+    width: 10px; height: 10px;
+    border-radius: 3px;
+  }
+  .legend-dot.committed { background: rgba(16,185,129,0.4); border: 1px solid rgba(16,185,129,0.5); }
+  .legend-dot.current   { background: rgba(0,212,255,0.4); border: 1px solid rgba(0,212,255,0.5); }
+  .legend-dot.pending   { background: rgba(245,158,11,0.3); border: 1px solid rgba(245,158,11,0.4); }
+  .legend-dot.unread    { background: rgba(255,255,255,0.06); border: 1px solid var(--border); }
+
+  /* Full system diagram SVG-like */
+  .system-diagram {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 28px;
+    margin: 20px 0;
+    overflow-x: auto;
+  }
+  .sys-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0;
+    min-width: 500px;
+  }
+  .sys-box {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 20px;
+    text-align: center;
+    min-width: 110px;
+  }
+  .sys-box .sys-icon { font-size: 24px; margin-bottom: 6px; }
+  .sys-box .sys-name { font-size: 12px; font-weight: 600; }
+  .sys-box .sys-detail { font-size: 10px; color: var(--text-dim); margin-top: 4px; font-family: 'JetBrains Mono', monospace; }
+  .sys-box.prod { border-color: rgba(14,165,233,0.5); }
+  .sys-box.kafka { border-color: rgba(124,58,237,0.5); }
+  .sys-box.cons { border-color: rgba(16,185,129,0.5); }
+  .sys-arrow {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 0 8px;
+  }
+  .sys-arrow .sa-label {
+    font-size: 10px;
+    color: var(--text-dim);
+    font-family: 'JetBrains Mono', monospace;
+    white-space: nowrap;
+  }
+  .sys-arrow .sa-line {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    gap: 0;
+  }
+  .sa-dash {
+    flex: 1;
+    height: 2px;
+    background: repeating-linear-gradient(90deg, var(--border) 0, var(--border) 4px, transparent 4px, transparent 8px);
+  }
+  .sa-head {
+    width: 0; height: 0;
+    border-top: 5px solid transparent;
+    border-bottom: 5px solid transparent;
+    border-left: 8px solid var(--border);
+  }
+
+  /* Retry flow */
+  .retry-flow {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    margin: 16px 0;
+  }
+  .retry-step {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+  .retry-step:last-child { border-bottom: none; }
+  .retry-step .step-num {
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .step-success { background: rgba(16,185,129,0.15); color: var(--consumer); }
+  .step-fail    { background: rgba(239,68,68,0.15); color: var(--danger); }
+  .step-retry   { background: rgba(245,158,11,0.15); color: var(--broker); }
+  .retry-step .step-body { font-size: 13px; color: var(--text-muted); }
+  .retry-step .step-body strong { color: var(--text); font-size: 12px; font-family: 'JetBrains Mono', monospace; }
+
+  /* Two-column */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin: 16px 0;
+  }
+
+  /* Inline code */
+  code {
+    background: rgba(0,212,255,0.08);
+    border: 1px solid rgba(0,212,255,0.15);
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--accent);
+  }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .layout { grid-template-columns: 1fr; }
+    .sidebar { display: none; }
+    .content { padding: 28px 20px; }
+    .two-col, .ack-states, .partition-viz { grid-template-columns: 1fr; }
+    .hero h1 { font-size: 28px; }
+    .hero { padding: 36px 20px; }
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--surface); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-badge">⚡ Production Guide</div>
+  <h1>Apache Kafka<br>Python Client</h1>
+  <p>A precise, atomic breakdown of the Confluent Kafka Python client — producer and consumer — with flow diagrams for every key concept.</p>
+  <div class="hero-tags">
+    <span class="tag">confluent-kafka</span>
+    <span class="tag">producer.py</span>
+    <span class="tag">consumer.py</span>
+    <span class="tag">idempotence</span>
+    <span class="tag">exactly-once</span>
+    <span class="tag">offset-management</span>
+  </div>
+</div>
+
+<div class="layout">
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="sidebar-label">Overview</div>
+  <a href="#architecture">System Architecture</a>
+  <a href="#when-diagrams">When Diagrams</a>
+
+  <div class="sidebar-label" style="margin-top:16px">Producer</div>
+  <a href="#producer-config">Configuration</a>
+  <a href="#producer-lifecycle">Lifecycle</a>
+  <a href="#batching">Batching & Linger</a>
+  <a href="#acks">Acknowledgements</a>
+  <a href="#idempotence">Idempotence</a>
+  <a href="#delivery">Delivery Callback</a>
+  <a href="#producer-code">Full Code</a>
+
+  <div class="sidebar-label" style="margin-top:16px">Consumer</div>
+  <a href="#consumer-config">Configuration</a>
+  <a href="#partitions">Partitions & Keys</a>
+  <a href="#offsets">Offset Management</a>
+  <a href="#poll-loop">Poll Loop</a>
+  <a href="#consumer-code">Full Code</a>
+
+  <div class="sidebar-label" style="margin-top:16px">Patterns</div>
+  <a href="#graceful-shutdown">Graceful Shutdown</a>
+  <a href="#error-handling">Error Handling</a>
+</nav>
+
+<!-- CONTENT -->
+<main class="content">
+
+  <!-- ── SECTION: Architecture ── -->
+  <section class="section" id="architecture">
+    <div class="section-header">
+      <div class="section-num">0</div>
+      <div class="section-title">System Architecture — The Big Picture</div>
+    </div>
+
+    <div class="diagram-wrap">
+      <div class="diagram-title">📡 end-to-end message flow</div>
+      <div class="system-diagram">
+        <div class="sys-row">
+          <div class="sys-box prod">
+            <div class="sys-icon">🏭</div>
+            <div class="sys-name" style="color:var(--producer)">Producer</div>
+            <div class="sys-detail">order-service</div>
+            <div class="sys-detail" style="margin-top:4px; font-size:9px">serialize → buffer → batch</div>
+          </div>
+          <div class="sys-arrow">
+            <div class="sa-label">produce()</div>
+            <div class="sa-line"><div class="sa-dash"></div><div class="sa-head"></div></div>
+            <div class="sa-label">key + value + topic</div>
+          </div>
+          <div class="sys-box kafka">
+            <div class="sys-icon">⚡</div>
+            <div class="sys-name" style="color:var(--kafka)">Kafka Broker</div>
+            <div class="sys-detail">localhost:9092</div>
+            <div class="sys-detail" style="margin-top:4px; font-size:9px">topic: orders (3 partitions)</div>
+          </div>
+          <div class="sys-arrow">
+            <div class="sa-label">consumer.poll()</div>
+            <div class="sa-line"><div class="sa-dash"></div><div class="sa-head"></div></div>
+            <div class="sa-label">offset tracking</div>
+          </div>
+          <div class="sys-box cons">
+            <div class="sys-icon">🔄</div>
+            <div class="sys-name" style="color:var(--consumer)">Consumer</div>
+            <div class="sys-detail">order-processing-service</div>
+            <div class="sys-detail" style="margin-top:4px; font-size:9px">deserialize → process → commit</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="explain-grid">
+      <div class="explain-card blue">
+        <h4>🏭 Producer</h4>
+        <p>Creates events, serializes them to bytes, and pushes into Kafka. Never writes directly — uses an internal buffer + batch manager for efficiency.</p>
+      </div>
+      <div class="explain-card purple">
+        <h4>⚡ Broker</h4>
+        <p>Stores messages in an append-only log, organized by topic → partition → offset. Replicates across nodes. Never deletes on consume.</p>
+      </div>
+      <div class="explain-card green">
+        <h4>🔄 Consumer</h4>
+        <p>Reads from a partition at a specific offset. Commits the offset after processing. Part of a consumer group — each partition assigned to exactly one consumer.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── SECTION: WHEN DIAGRAMS ── -->
+  <section class="section" id="when-diagrams">
+    <div class="section-header">
+      <div class="section-num">W</div>
+      <div class="section-title">When Diagrams — What triggers what</div>
+    </div>
+
+    <div class="diagram-wrap">
+      <div class="diagram-title">🔁 producer — when does each mechanism fire?</div>
+      <div class="when-diagram">
+
+        <div class="when-row">
+          <div class="when-trigger">linger.ms expires<br><span style="font-size:10px; color:var(--text-dim)">20ms passed</span></div>
+          <div style="display:flex;align-items:center;padding:0 8px"><div style="width:36px;height:2px;background:var(--border)"></div><div style="width:0;height:0;border-top:5px solid transparent;border-bottom:5px solid transparent;border-left:8px solid var(--border)"></div></div>
+          <div class="when-result">
+            <strong>batch.send()</strong>
+            <p>Flushes the current batch to the broker — even if it's not full. Prevents messages sitting idle.</p>
+          </div>
+        </div>
+
+        <div class="when-row">
+          <div class="when-trigger">batch.size reached<br><span style="font-size:10px; color:var(--text-dim)">64 KB full</span></div>
+          <div style="display:flex;align-items:center;padding:0 8px"><div style="width:36px;height:2px;background:var(--border)"></div><div style="width:0;height:0;border-top:5px solid transparent;border-bottom:5px solid transparent;border-left:8px solid var(--border)"></div></div>
+          <div class="when-result">
+            <strong>batch.send()</strong>
+            <p>Ignores remaining linger.ms time and sends immediately. Throughput > latency priority here.</p>
+          </div>
+        </div>
+
+        <div class="when-row">
+          <div class="when-trigger">broker sends ACK<br><span style="font-size:10px; color:var(--text-dim)">acks=all</span></div>
+          <div style="display:flex;align-items:center;padding:0 8px"><div style="width:36px;height:2px;background:var(--border)"></div><div style="width:0;height:0;border-top:5px solid transparent;border-bottom:5px solid transparent;border-left:8px solid var(--border)"></div></div>
+          <div class="when-result">
+            <strong>delivery_report(err=None, msg)</strong>
+            <p>Callback fires on the thread calling <code>poll()</code>. Prints partition + offset of confirmed write.</p>
+          </div>
+        </div>
+
+        <div class="when-row">
+          <div class="when-trigger">broker fails<br><span style="font-size:10px; color:var(--text-dim)">network / timeout</span></div>
+          <div style="display:flex;align-items:center;padding:0 8px"><div style="width:36px;height:2px;background:var(--border)"></div><div style="width:0;height:0;border-top:5px solid transparent;border-bottom:5px solid transparent;border-left:8px solid var(--border)"></div></div>
+          <div class="when-result">
+            <strong>retry(backoff=1s) × 10</strong>
+            <p>Automatically retried up to 10 times with 1s gap. Idempotence ensures no duplicates if broker received but failed to ack.</p>
+          </div>
+        </div>
+
+        <div class="when-row">
+          <div class="when-trigger">message.timeout.ms<br><span style="font-size:10px; color:var(--text-dim)">30s elapsed</span></div>
+          <div style="display:flex;align-items:center;padding:0 8px"><div style="width:36px;height:2px;background:var(--border)"></div><div style="width:0;height:0;border-top:5px solid transparent;border-bottom:5px solid transparent;border-left:8px solid var(--border)"></div></div>
+          <div class="when-result">
+            <strong>delivery_report(err=MSG_TIMED_OUT)</strong>
+            <p>Callback fires with an error. Message is dropped. You must handle this — log, dead-letter, or alert.</p>
+          </div>
+        </div>
+
+        <div class="when-row">
+          <div class="when-trigger">SIGINT / SIGTERM<br><span style="font-size:10px; color:var(--text-dim)">Ctrl+C / docker stop</span></div>
+          <div style="display:flex;align-items:center;padding:0 8px"><div style="width:36px;height:2px;background:var(--border)"></div><div style="width:0;height:0;border-top:5px solid transparent;border-bottom:5px solid transparent;border-left:8px solid var(--border)"></div></div>
+          <div class="when-result">
+            <strong>running = False → flush()</strong>
+            <p>Loop exits, then <code>flush()</code> blocks until all buffered messages are delivered. Zero data loss on shutdown.</p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="diagram-wrap">
+      <div class="diagram-title">📥 consumer — when does each mechanism fire?</div>
+      <div class="when-diagram">
+
+        <div class="when-row">
+          <div class="when-trigger">poll(1.0)<br><span style="font-size:10px; color:var(--text-dim)">every loop tick</span></div>
+          <div style="display:flex;align-items:center;padding:0 8px"><div style="width:36px;height:2px;background:var(--border)"></div><div style="width:0;height:0;border-top:5px solid transparent;border-bottom:5px solid transparent;border-left:8px solid var(--border)"></div></div>
+          <div class="when-result">
+            <strong>msg = next message or None</strong>
+            <p>Blocks for up to 1 second waiting for messages. Returns immediately if one is available. Also sends heartbeats internally.</p>
+          </div>
+        </div>
+
+        <div class="when-row">
+          <div class="when-trigger">auto.commit.interval<br><span style="font-size:10px; color:var(--text-dim)">every 5000ms</span></div>
+          <div style="display:flex;align-items:center;padding:0 8px"><div style="width:36px;height:2px;background:var(--border)"></div><div style="width:0;height:0;border-top:5px solid transparent;border-bottom:5px solid transparent;border-left:8px solid var(--border)"></div></div>
+          <div class="when-result">
+            <strong>offset committed to __consumer_offsets</strong>
+            <p>Persists the current offset position to Kafka. If consumer crashes before this, messages will be re-read from last committed offset.</p>
+          </div>
+        </div>
+
+        <div class="when-row">
+          <div class="when-trigger">heartbeat gap &gt; session.timeout<br><span style="font-size:10px; color:var(--text-dim)">10s without heartbeat</span></div>
+          <div style="display:flex;align-items:center;padding:0 8px"><div style="width:36px;height:2px;background:var(--border)"></div><div style="width:0;height:0;border-top:5px solid transparent;border-bottom:5px solid transparent;border-left:8px solid var(--border)"></div></div>
+          <div class="when-result">
+            <strong>group rebalance triggered</strong>
+            <p>Consumer is considered dead. Its partitions are reassigned to other consumers in the group. Causes a pause in message processing.</p>
+          </div>
+        </div>
+
+        <div class="when-row">
+          <div class="when-trigger">poll() gap &gt; max.poll.interval<br><span style="font-size:10px; color:var(--text-dim)">300s without poll</span></div>
+          <div style="display:flex;align-items:center;padding:0 8px"><div style="width:36px;height:2px;background:var(--border)"></div><div style="width:0;height:0;border-top:5px solid transparent;border-bottom:5px solid transparent;border-left:8px solid var(--border)"></div></div>
+          <div class="when-result">
+            <strong>consumer kicked from group</strong>
+            <p>Distinct from heartbeat. Indicates the consumer is alive but too slow to process. Increase this if processing is legitimately slow.</p>
+          </div>
+        </div>
+
+        <div class="when-row">
+          <div class="when-trigger">SIGINT / SIGTERM<br><span style="font-size:10px; color:var(--text-dim)">Ctrl+C / docker stop</span></div>
+          <div style="display:flex;align-items:center;padding:0 8px"><div style="width:36px;height:2px;background:var(--border)"></div><div style="width:0;height:0;border-top:5px solid transparent;border-bottom:5px solid transparent;border-left:8px solid var(--border)"></div></div>
+          <div class="when-result">
+            <strong>running = False → consumer.close()</strong>
+            <p><code>close()</code> commits any pending offsets and sends a LeaveGroup request — allows immediate rebalance instead of waiting for session timeout.</p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ── SECTION: PRODUCER CONFIG ── -->
+  <section class="section" id="producer-config">
+    <div class="section-header">
+      <div class="section-num">1</div>
+      <div class="section-title">Producer — Configuration Deep Dive</div>
+    </div>
+
+    <table class="config-table">
+      <thead>
+        <tr>
+          <th>Parameter</th>
+          <th>Value</th>
+          <th>What it controls</th>
+          <th>Impact</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="param">bootstrap.servers</td>
+          <td class="val">localhost:9092</td>
+          <td class="desc">Initial broker to contact. Only used for cluster metadata discovery — not the only server messages go to.</td>
+          <td><span class="impact impact-high">connection</span></td>
+        </tr>
+        <tr>
+          <td class="param">acks</td>
+          <td class="val">"all"</td>
+          <td class="desc">How many replicas must confirm before ACK. <code>"all"</code> waits for all in-sync replicas — safest but adds ~5–20ms latency.</td>
+          <td><span class="impact impact-high">durability</span></td>
+        </tr>
+        <tr>
+          <td class="param">enable.idempotence</td>
+          <td class="val">True</td>
+          <td class="desc">Assigns producer_id + sequence_number to each batch. Broker deduplicates retried batches. Requires <code>acks=all</code>.</td>
+          <td><span class="impact impact-high">exactly-once</span></td>
+        </tr>
+        <tr>
+          <td class="param">retries</td>
+          <td class="val">10</td>
+          <td class="desc">Automatic retry count on transient failures. With idempotence, retries are safe and won't produce duplicates.</td>
+          <td><span class="impact impact-med">reliability</span></td>
+        </tr>
+        <tr>
+          <td class="param">retry.backoff.ms</td>
+          <td class="val">1000</td>
+          <td class="desc">Milliseconds to wait between retries. Prevents thundering herd on broker recovery.</td>
+          <td><span class="impact impact-med">reliability</span></td>
+        </tr>
+        <tr>
+          <td class="param">linger.ms</td>
+          <td class="val">20</td>
+          <td class="desc">Max wait before sending an incomplete batch. Trades latency for throughput — batches more messages together.</td>
+          <td><span class="impact impact-perf">throughput</span></td>
+        </tr>
+        <tr>
+          <td class="param">batch.size</td>
+          <td class="val">65536</td>
+          <td class="desc">64 KB max batch per partition. Batch sends when either this is full OR linger.ms expires — whichever is first.</td>
+          <td><span class="impact impact-perf">throughput</span></td>
+        </tr>
+        <tr>
+          <td class="param">compression.type</td>
+          <td class="val">snappy</td>
+          <td class="desc">Compresses the entire batch before network transmission. Snappy = fast compression (~2x ratio). Good balance of CPU and savings.</td>
+          <td><span class="impact impact-perf">bandwidth</span></td>
+        </tr>
+        <tr>
+          <td class="param">message.timeout.ms</td>
+          <td class="val">30000</td>
+          <td class="desc">Total time (including retries) to deliver a message. After 30s, delivery fails and callback fires with an error.</td>
+          <td><span class="impact impact-high">safety</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ── SECTION: PRODUCER LIFECYCLE ── -->
+  <section class="section" id="producer-lifecycle">
+    <div class="section-header">
+      <div class="section-num">2</div>
+      <div class="section-title">Producer — Message Lifecycle</div>
+    </div>
+
+    <div class="diagram-wrap">
+      <div class="diagram-title">📤 from produce() call to broker confirmation</div>
+      <div class="flow">
+        <div class="flow-node producer">
+          <div class="node-icon">📝</div>
+          <div class="node-label">produce()</div>
+          <div class="node-sub">called in loop</div>
+        </div>
+        <div class="flow-arrow">
+          <div class="arrow-label">enqueue</div>
+          <div class="arrow-line"><div class="line"></div><div class="arrowhead"></div></div>
+        </div>
+        <div class="flow-node buffer">
+          <div class="node-icon">📦</div>
+          <div class="node-label">Buffer</div>
+          <div class="node-sub">in-memory</div>
+        </div>
+        <div class="flow-arrow">
+          <div class="arrow-label">batch full / linger</div>
+          <div class="arrow-line"><div class="line"></div><div class="arrowhead"></div></div>
+        </div>
+        <div class="flow-node buffer">
+          <div class="node-icon">🗜️</div>
+          <div class="node-label">Compress</div>
+          <div class="node-sub">snappy</div>
+        </div>
+        <div class="flow-arrow">
+          <div class="arrow-label">TCP send</div>
+          <div class="arrow-line"><div class="line"></div><div class="arrowhead"></div></div>
+        </div>
+        <div class="flow-node broker">
+          <div class="node-icon">⚡</div>
+          <div class="node-label">Broker</div>
+          <div class="node-sub">write to log</div>
+        </div>
+        <div class="flow-arrow">
+          <div class="arrow-label">ACK / NACK</div>
+          <div class="arrow-line"><div class="line"></div><div class="arrowhead"></div></div>
+        </div>
+        <div class="flow-node ack">
+          <div class="node-icon">✅</div>
+          <div class="node-label">Callback</div>
+          <div class="node-sub">delivery_report</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tip">
+      <div class="tip-icon">💡</div>
+      <div class="tip-body"><strong>KEY INSIGHT — produce() is non-blocking.</strong> It puts the message in an internal buffer and returns instantly. The actual network send happens on a background thread. <code>poll(0)</code> processes the resulting callbacks on your thread.</div>
+    </div>
+
+    <div class="tip warn">
+      <div class="tip-icon">⚠️</div>
+      <div class="tip-body"><strong>Never skip flush() on shutdown.</strong> If the process exits before the buffer is sent, buffered messages are silently lost. <code>flush()</code> blocks until all pending messages are delivered.</div>
+    </div>
+  </section>
+
+  <!-- ── SECTION: BATCHING ── -->
+  <section class="section" id="batching">
+    <div class="section-header">
+      <div class="section-num">3</div>
+      <div class="section-title">Batching — linger.ms vs batch.size</div>
+    </div>
+
+    <div class="explain-grid">
+      <div class="explain-card yellow">
+        <h4>⏱ linger.ms = 20</h4>
+        <p>Producer waits up to 20ms before sending, hoping more messages arrive to fill the batch. <strong>Latency knob.</strong> Set higher for more throughput, lower for lower latency.</p>
+      </div>
+      <div class="explain-card blue">
+        <h4>📦 batch.size = 65536</h4>
+        <p>Max bytes per batch per partition. When the batch fills up, it sends immediately — ignoring remaining linger time. <strong>Throughput ceiling.</strong></p>
+      </div>
+    </div>
+
+    <div class="diagram-wrap">
+      <div class="diagram-title">📊 batch fill state — which condition fires the send?</div>
+      <div class="batch-vis">
+        <div class="batch-col">
+          <div class="batch-bar partial" style="height:20px"></div>
+          <div class="batch-label">t=0ms<br>2 msgs<br>~5KB</div>
+        </div>
+        <div class="batch-col">
+          <div class="batch-bar partial" style="height:45px"></div>
+          <div class="batch-label">t=8ms<br>7 msgs<br>~18KB</div>
+        </div>
+        <div class="batch-col">
+          <div class="batch-bar partial" style="height:70px"></div>
+          <div class="batch-label">t=20ms<br>12 msgs<br>~30KB</div>
+        </div>
+        <div style="display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:6px">
+          <div style="font-size:18px">⏰</div>
+          <div class="batch-label" style="font-size:11px;color:var(--broker)">linger fires<br>→ sends 30KB<br>half-full batch</div>
+        </div>
+        <div style="width:20px"></div>
+        <div class="batch-col">
+          <div class="batch-bar partial" style="height:30px"></div>
+          <div class="batch-label">t=0ms<br>5 msgs</div>
+        </div>
+        <div class="batch-col">
+          <div class="batch-bar partial" style="height:55px"></div>
+          <div class="batch-label">t=5ms<br>burst</div>
+        </div>
+        <div class="batch-col">
+          <div class="batch-bar full" style="height:100px"></div>
+          <div class="batch-label">t=12ms<br>64KB full</div>
+        </div>
+        <div style="display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:6px">
+          <div style="font-size:18px">🚀</div>
+          <div class="batch-label" style="font-size:11px;color:var(--consumer)">size fires early<br>→ sends 64KB<br>ignores linger</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:16px;margin-top:12px">
+        <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-dim)">
+          <div style="width:12px;height:12px;border-radius:3px;background:rgba(245,158,11,0.4)"></div> partial batch
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-dim)">
+          <div style="width:12px;height:12px;border-radius:3px;background:rgba(16,185,129,0.4)"></div> full batch — sends immediately
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── SECTION: ACKNOWLEDGEMENTS ── -->
+  <section class="section" id="acks">
+    <div class="section-header">
+      <div class="section-num">4</div>
+      <div class="section-title">Acknowledgements — acks=0, 1, all</div>
+    </div>
+
+    <div class="ack-states">
+      <div class="ack-card">
+        <div class="ack-val">0</div>
+        <div class="ack-name">Fire &amp; Forget</div>
+        <div class="ack-desc">No broker confirmation required. Producer sends and moves on instantly.</div>
+        <div class="ack-risk">⚠ messages can be lost</div>
+      </div>
+      <div class="ack-card">
+        <div class="ack-val">1</div>
+        <div class="ack-name">Leader ACK</div>
+        <div class="ack-desc">Partition leader confirms write. If leader fails before replication, message is lost.</div>
+        <div class="ack-risk">⚠ can lose on leader failure</div>
+      </div>
+      <div class="ack-card">
+        <div class="ack-val">all</div>
+        <div class="ack-name">All ISR ACK</div>
+        <div class="ack-desc">Leader + all in-sync replicas confirm. Highest durability. Adds ~5–20ms latency.</div>
+        <div class="ack-risk">✓ production recommended</div>
+      </div>
+    </div>
+
+    <div class="tip success">
+      <div class="tip-icon">✅</div>
+      <div class="tip-body"><strong>ISR = In-Sync Replicas.</strong> Replicas that are fully caught up with the leader. If a replica falls behind, it's removed from the ISR set. <code>acks=all</code> only waits for ISR members — so it doesn't block on slow replicas.</div>
+    </div>
+  </section>
+
+  <!-- ── SECTION: IDEMPOTENCE ── -->
+  <section class="section" id="idempotence">
+    <div class="section-header">
+      <div class="section-num">5</div>
+      <div class="section-title">Idempotence — Preventing Duplicates on Retry</div>
+    </div>
+
+    <p style="color:var(--text-muted);margin-bottom:20px;font-size:14px">Without idempotence: network failure after broker writes but before ACK → producer retries → <strong>duplicate message</strong>. With idempotence, the broker detects and discards it.</p>
+
+    <div class="diagram-wrap">
+      <div class="diagram-title">🔁 retry without vs with idempotence</div>
+      <div class="two-col">
+        <div>
+          <div style="font-size:11px;font-weight:700;letter-spacing:1px;color:var(--danger);margin-bottom:12px">❌ WITHOUT IDEMPOTENCE</div>
+          <div class="retry-flow">
+            <div class="retry-step">
+              <div class="step-num step-success">1</div>
+              <div class="step-body">Producer sends batch <strong>msg#42</strong></div>
+            </div>
+            <div class="retry-step">
+              <div class="step-num step-success">2</div>
+              <div class="step-body">Broker writes <strong>msg#42</strong> to log ✓</div>
+            </div>
+            <div class="retry-step">
+              <div class="step-num step-fail">3</div>
+              <div class="step-body">Network drops → producer never receives ACK ✗</div>
+            </div>
+            <div class="retry-step">
+              <div class="step-num step-retry">4</div>
+              <div class="step-body">Producer retries → sends <strong>msg#42</strong> again</div>
+            </div>
+            <div class="retry-step">
+              <div class="step-num step-fail">5</div>
+              <div class="step-body">Broker writes <strong>msg#42 again</strong> → 💀 duplicate!</div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:700;letter-spacing:1px;color:var(--consumer);margin-bottom:12px">✅ WITH IDEMPOTENCE</div>
+          <div class="retry-flow">
+            <div class="retry-step">
+              <div class="step-num step-success">1</div>
+              <div class="step-body">Producer assigned <strong>pid=7, seq=42</strong></div>
+            </div>
+            <div class="retry-step">
+              <div class="step-num step-success">2</div>
+              <div class="step-body">Broker writes batch, records <strong>pid=7, seq=42</strong> ✓</div>
+            </div>
+            <div class="retry-step">
+              <div class="step-num step-fail">3</div>
+              <div class="step-body">Network drops → no ACK received ✗</div>
+            </div>
+            <div class="retry-step">
+              <div class="step-num step-retry">4</div>
+              <div class="step-body">Producer retries with same <strong>pid=7, seq=42</strong></div>
+            </div>
+            <div class="retry-step">
+              <div class="step-num step-success">5</div>
+              <div class="step-body">Broker sees duplicate seq → silently discards ✓</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── SECTION: DELIVERY CALLBACK ── -->
+  <section class="section" id="delivery">
+    <div class="section-header">
+      <div class="section-num">6</div>
+      <div class="section-title">Delivery Callback — delivery_report()</div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-header">
+        <span class="code-filename">delivery callback</span>
+        <span class="code-lang">Python</span>
+      </div>
+      <pre><span class="kw">def</span> <span class="fn">delivery_report</span>(err, msg):
+    <span class="cm"># err  → KafkaError or None</span>
+    <span class="cm"># msg  → Message object (topic, partition, offset, key, value)</span>
+
+    <span class="kw">if</span> err <span class="kw">is not</span> <span class="var">None</span>:
+        <span class="cm"># Delivery failed after all retries + timeout</span>
+        <span class="cm"># Possible errors: MSG_TIMED_OUT, UNKNOWN_TOPIC, etc.</span>
+        <span class="fn">print</span>(<span class="str">"Delivery failed:"</span>, err)
+
+    <span class="kw">else</span>:
+        <span class="cm"># Success — message is now durable in Kafka</span>
+        <span class="fn">print</span>(
+            <span class="str">"Delivered to"</span>, msg.<span class="fn">topic</span>(),        <span class="cm"># "orders"</span>
+            <span class="str">"partition"</span>,  msg.<span class="fn">partition</span>(),    <span class="cm"># 0, 1, or 2</span>
+            <span class="str">"offset"</span>,     msg.<span class="fn">offset</span>()         <span class="cm"># monotonically increasing</span>
+        )</pre>
+    </div>
+
+    <div class="explain-grid">
+      <div class="explain-card blue">
+        <h4>⏰ When does this fire?</h4>
+        <p>Only when you call <code>producer.poll()</code> or <code>producer.flush()</code>. Kafka Python is single-threaded from the callback perspective — it queues internal events and drains them on poll.</p>
+      </div>
+      <div class="explain-card yellow">
+        <h4>📍 msg.offset()</h4>
+        <p>The position in the partition log where your message landed. Monotonically increasing. Use this for tracing, debugging, and building exactly-once consumer logic.</p>
+      </div>
+      <div class="explain-card purple">
+        <h4>🔢 msg.partition()</h4>
+        <p>Determined by <code>hash(key) % num_partitions</code>. Same key always lands in same partition — guarantees ordering for a given entity (e.g. all events for <code>order_id</code>).</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── SECTION: PARTITIONS ── -->
+  <section class="section" id="partitions">
+    <div class="section-header">
+      <div class="section-num">7</div>
+      <div class="section-title">Partitions — How Keys Control Routing</div>
+    </div>
+
+    <div class="diagram-wrap">
+      <div class="diagram-title">🗂 topic "orders" — 3 partitions, messages routed by key</div>
+      <div class="partition-viz">
+        <div class="partition">
+          <div class="partition-header p0">
+            <span>PARTITION 0</span>
+            <span style="font-size:10px;color:var(--text-dim)">hash(key)%3=0</span>
+          </div>
+          <div class="partition-messages">
+            <div class="partition-msg"><span class="offset-badge">0</span><span class="msg-key">user_a</span><span class="msg-val">amount:250</span></div>
+            <div class="partition-msg"><span class="offset-badge">1</span><span class="msg-key">user_a</span><span class="msg-val">amount:180</span></div>
+            <div class="partition-msg"><span class="offset-badge">2</span><span class="msg-key">user_d</span><span class="msg-val">amount:99</span></div>
+          </div>
+        </div>
+        <div class="partition">
+          <div class="partition-header p1">
+            <span>PARTITION 1</span>
+            <span style="font-size:10px;color:var(--text-dim)">hash(key)%3=1</span>
+          </div>
+          <div class="partition-messages">
+            <div class="partition-msg"><span class="offset-badge">0</span><span class="msg-key">user_b</span><span class="msg-val">amount:400</span></div>
+            <div class="partition-msg"><span class="offset-badge">1</span><span class="msg-key">user_b</span><span class="msg-val">amount:90</span></div>
+          </div>
+        </div>
+        <div class="partition">
+          <div class="partition-header p2">
+            <span>PARTITION 2</span>
+            <span style="font-size:10px;color:var(--text-dim)">hash(key)%3=2</span>
+          </div>
+          <div class="partition-messages">
+            <div class="partition-msg"><span class="offset-badge">0</span><span class="msg-key">user_c</span><span class="msg-val">amount:1200</span></div>
+            <div class="partition-msg"><span class="offset-badge">1</span><span class="msg-key">user_e</span><span class="msg-val">amount:500</span></div>
+            <div class="partition-msg"><span class="offset-badge">2</span><span class="msg-key">user_c</span><span class="msg-val">amount:330</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tip">
+      <div class="tip-icon">🔑</div>
+      <div class="tip-body"><strong>Ordering guarantee:</strong> Within a single partition, messages are strictly ordered by offset. If you use <code>order_id</code> as the key, all events for the same order land in the same partition and will be consumed in order.</div>
+    </div>
+    <div class="tip warn">
+      <div class="tip-icon">⚠️</div>
+      <div class="tip-body"><strong>No ordering across partitions.</strong> If two events are in different partitions (different keys), Kafka gives no ordering guarantee between them. Design your key strategy carefully.</div>
+    </div>
+  </section>
+
+  <!-- ── SECTION: OFFSETS ── -->
+  <section class="section" id="offsets">
+    <div class="section-header">
+      <div class="section-num">8</div>
+      <div class="section-title">Offset Management — Consumer Position Tracking</div>
+    </div>
+
+    <div class="diagram-wrap">
+      <div class="diagram-title">📍 consumer offset state — what has been read vs committed</div>
+      <div class="offset-diagram">
+        <div class="offset-track">
+          <div class="offset-msg committed"><div class="o-num">0</div><div class="o-state">✅</div></div>
+          <div class="offset-connector"></div>
+          <div class="offset-msg committed"><div class="o-num">1</div><div class="o-state">✅</div></div>
+          <div class="offset-connector"></div>
+          <div class="offset-msg committed"><div class="o-num">2</div><div class="o-state">✅</div></div>
+          <div class="offset-connector"></div>
+          <div class="offset-msg committed"><div class="o-num">3</div><div class="o-state">✅</div></div>
+          <div class="offset-connector"></div>
+          <div class="offset-msg current"><div class="o-num">4</div><div class="o-state">👁️</div></div>
+          <div class="offset-connector"></div>
+          <div class="offset-msg pending"><div class="o-num">5</div><div class="o-state">🔄</div></div>
+          <div class="offset-connector"></div>
+          <div class="offset-msg pending"><div class="o-num">6</div><div class="o-state">🔄</div></div>
+          <div class="offset-connector"></div>
+          <div class="offset-msg unread"><div class="o-num">7</div><div class="o-state">💤</div></div>
+          <div class="offset-connector"></div>
+          <div class="offset-msg unread"><div class="o-num">8</div><div class="o-state">💤</div></div>
+        </div>
+        <div class="offset-legend">
+          <div class="legend-item"><div class="legend-dot committed"></div> committed (persisted to __consumer_offsets)</div>
+          <div class="legend-item"><div class="legend-dot current"></div> currently processing</div>
+          <div class="legend-item"><div class="legend-dot pending"></div> read but not yet committed</div>
+          <div class="legend-item"><div class="legend-dot unread"></div> not yet fetched</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="explain-grid">
+      <div class="explain-card green">
+        <h4>✅ enable.auto.commit = True</h4>
+        <p>Kafka auto-commits the highest consumed offset every 5000ms. Simple but risk: if the consumer crashes between processing offset 5 and the next commit, offsets 5–6 will be re-read on restart. <strong>At-least-once delivery.</strong></p>
+      </div>
+      <div class="explain-card purple">
+        <h4>🎯 Manual commit (production)</h4>
+        <p>Set <code>enable.auto.commit=False</code> and call <code>consumer.commit()</code> after successfully processing. Ensures you only commit what you actually handled. Prevents data loss on crash. <strong>Exactly-once when combined with idempotent consumers.</strong></p>
+      </div>
+    </div>
+
+    <div class="tip danger">
+      <div class="tip-icon">🔴</div>
+      <div class="tip-body"><strong>auto.offset.reset = "earliest"</strong> — If this consumer group has never committed an offset (first startup), start reading from the beginning of the topic. Change to <code>"latest"</code> to skip all historical messages and only process new ones.</div>
+    </div>
+  </section>
+
+  <!-- ── SECTION: POLL LOOP ── -->
+  <section class="section" id="poll-loop">
+    <div class="section-header">
+      <div class="section-num">9</div>
+      <div class="section-title">Poll Loop — Heartbeats, Timeouts &amp; Rebalance</div>
+    </div>
+
+    <div class="diagram-wrap">
+      <div class="diagram-title">💓 what happens inside consumer.poll(1.0)?</div>
+      <div class="when-diagram">
+        <div class="when-row">
+          <div class="when-trigger">poll(1.0) called<br><span style="font-size:10px;color:var(--text-dim)">your loop tick</span></div>
+          <div style="display:flex;align-items:center;padding:0 8px"><div style="width:36px;height:2px;background:var(--border)"></div><div style="width:0;height:0;border-top:5px solid transparent;border-bottom:5px solid transparent;border-left:8px solid var(--border)"></div></div>
+          <div class="when-result">
+            <strong>1. Sends heartbeat to group coordinator</strong>
+            <p>Proves consumer is alive. If heartbeat gap exceeds <code>session.timeout.ms</code> (10s), group coordinator assumes dead → triggers rebalance.</p>
+          </div>
+        </div>
+        <div class="when-row">
+          <div class="when-trigger">message available<br><span style="font-size:10px;color:var(--text-dim)">in broker</span></div>
+          <div style="display:flex;align-items:center;padding:0 8px"><div style="width:36px;height:2px;background:var(--border)"></div><div style="width:0;height:0;border-top:5px solid transparent;border-bottom:5px solid transparent;border-left:8px solid var(--border)"></div></div>
+          <div class="when-result">
+            <strong>2. Returns Message object immediately</strong>
+            <p>Doesn't wait for the 1.0s timeout. Returns as soon as a message is in the local fetch buffer.</p>
+          </div>
+        </div>
+        <div class="when-row">
+          <div class="when-trigger">no messages<br><span style="font-size:10px;color:var(--text-dim)">empty partition</span></div>
+          <div style="display:flex;align-items:center;padding:0 8px"><div style="width:36px;height:2px;background:var(--border)"></div><div style="width:0;height:0;border-top:5px solid transparent;border-bottom:5px solid transparent;border-left:8px solid var(--border)"></div></div>
+          <div class="when-result">
+            <strong>3. Returns None after 1.0s</strong>
+            <p>The 1.0 is a maximum wait. Allows the loop to stay responsive and still send heartbeats during quiet periods.</p>
+          </div>
+        </div>
+        <div class="when-row">
+          <div class="when-trigger">broker error<br><span style="font-size:10px;color:var(--text-dim)">KafkaError</span></div>
+          <div style="display:flex;align-items:center;padding:0 8px"><div style="width:36px;height:2px;background:var(--border)"></div><div style="width:0;height:0;border-top:5px solid transparent;border-bottom:5px solid transparent;border-left:8px solid var(--border)"></div></div>
+          <div class="when-result">
+            <strong>4. Returns Message with msg.error() set</strong>
+            <p>Not an exception — you must explicitly check <code>if msg.error()</code>. Log and continue, or implement dead-letter logic.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tip">
+      <div class="tip-icon">💡</div>
+      <div class="tip-body"><strong>heartbeat.interval.ms = 3000 vs session.timeout.ms = 10000.</strong> Heartbeat fires every 3s. Session times out at 10s. This gives ~3 missed heartbeats before the broker considers the consumer dead. Rule of thumb: heartbeat ≈ session_timeout / 3.</div>
+    </div>
+  </section>
+
+  <!-- ── SECTION: GRACEFUL SHUTDOWN ── -->
+  <section class="section" id="graceful-shutdown">
+    <div class="section-header">
+      <div class="section-num">10</div>
+      <div class="section-title">Graceful Shutdown — Signal Handling</div>
+    </div>
+
+    <div class="two-col">
+      <div class="explain-card blue">
+        <h4>signal.SIGINT</h4>
+        <p>Sent when user presses <strong>Ctrl+C</strong>. Without a handler, Python raises <code>KeyboardInterrupt</code> mid-loop — leaving unflushed messages and uncommitted offsets.</p>
+      </div>
+      <div class="explain-card purple">
+        <h4>signal.SIGTERM</h4>
+        <p>Sent by <strong>docker stop</strong>, systemd, kubernetes pod termination. Without a handler, process is forcibly killed after a grace period. The handler gives you time to flush/close cleanly.</p>
+      </div>
+    </div>
+
+    <div class="diagram-wrap">
+      <div class="diagram-title">🛑 graceful shutdown sequence</div>
+      <div class="when-diagram">
+        <div class="when-row">
+          <div class="when-trigger">SIGINT / SIGTERM<br><span style="font-size:10px;color:var(--text-dim)">OS signal</span></div>
+          <div style="display:flex;align-items:center;padding:0 8px"><div style="width:36px;height:2px;background:var(--border)"></div><div style="width:0;height:0;border-top:5px solid transparent;border-bottom:5px solid transparent;border-left:8px solid var(--border)"></div></div>
+          <div class="when-result">
+            <strong>shutdown(sig, frame) fires</strong>
+            <p>Sets <code>running = False</code>. Does NOT interrupt the current loop body. Lets the current iteration complete naturally.</p>
+          </div>
+        </div>
+        <div class="when-row">
+          <div class="when-trigger">while loop checks<br><span style="font-size:10px;color:var(--text-dim)">next iteration</span></div>
+          <div style="display:flex;align-items:center;padding:0 8px"><div style="width:36px;height:2px;background:var(--border)"></div><div style="width:0;height:0;border-top:5px solid transparent;border-bottom:5px solid transparent;border-left:8px solid var(--border)"></div></div>
+          <div class="when-result">
+            <strong>while running: → exits loop</strong>
+            <p>Loop condition is now False. Execution falls through to cleanup code below the loop.</p>
+          </div>
+        </div>
+        <div class="when-row">
+          <div class="when-trigger">producer path<br><span style="font-size:10px;color:var(--text-dim)">after loop</span></div>
+          <div style="display:flex;align-items:center;padding:0 8px"><div style="width:36px;height:2px;background:var(--border)"></div><div style="width:0;height:0;border-top:5px solid transparent;border-bottom:5px solid transparent;border-left:8px solid var(--border)"></div></div>
+          <div class="when-result">
+            <strong>producer.flush() — blocks until all delivered</strong>
+            <p>No messages left in buffer. All delivery callbacks fired. Safe to exit.</p>
+          </div>
+        </div>
+        <div class="when-row">
+          <div class="when-trigger">consumer path<br><span style="font-size:10px;color:var(--text-dim)">after loop</span></div>
+          <div style="display:flex;align-items:center;padding:0 8px"><div style="width:36px;height:2px;background:var(--border)"></div><div style="width:0;height:0;border-top:5px solid transparent;border-bottom:5px solid transparent;border-left:8px solid var(--border)"></div></div>
+          <div class="when-result">
+            <strong>consumer.close() — commits offsets + leaves group</strong>
+            <p>Sends LeaveGroup request. Group coordinator immediately rebalances remaining consumers. No need to wait for session timeout.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── SECTION: PRODUCER FULL CODE ── -->
+  <section class="section" id="producer-code">
+    <div class="section-header">
+      <div class="section-num">P</div>
+      <div class="section-title">producer.py — Annotated Full Code</div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-header">
+        <span class="code-filename">producer.py</span>
+        <span class="code-lang">Python</span>
+      </div>
+      <pre><span class="cm"># ─── IMPORTS ────────────────────────────────────────────</span>
+<span class="kw">from</span> confluent_kafka <span class="kw">import</span> <span class="var">Producer</span>  <span class="cm"># handles: connect, buffer, batch, retry</span>
+<span class="kw">import</span> json                              <span class="cm"># dict → JSON string</span>
+<span class="kw">import</span> uuid                              <span class="cm"># generate unique order IDs</span>
+<span class="kw">import</span> time                              <span class="cm"># time.sleep() to pace events</span>
+<span class="kw">import</span> signal                            <span class="cm"># catch Ctrl+C / docker stop</span>
+<span class="kw">import</span> sys                               <span class="cm"># sys.exit() for clean termination</span>
+
+<span class="cm"># ─── CONFIGURATION ──────────────────────────────────────</span>
+conf = {
+    <span class="str">"bootstrap.servers"</span>:  <span class="str">"localhost:9092"</span>,  <span class="cm"># initial contact point for cluster metadata</span>
+    <span class="str">"client.id"</span>:          <span class="str">"order-service-producer"</span>,  <span class="cm"># shows in broker logs / metrics</span>
+
+    <span class="str">"acks"</span>:               <span class="str">"all"</span>,    <span class="cm"># wait for leader + all ISR replicas</span>
+    <span class="str">"enable.idempotence"</span>: <span class="var">True</span>,    <span class="cm"># broker dedupes retried batches (requires acks=all)</span>
+
+    <span class="str">"retries"</span>:            <span class="num">10</span>,      <span class="cm"># retry transient failures up to 10 times</span>
+    <span class="str">"retry.backoff.ms"</span>:   <span class="num">1000</span>,   <span class="cm"># wait 1s between retries</span>
+
+    <span class="str">"linger.ms"</span>:          <span class="num">20</span>,      <span class="cm"># wait 20ms before sending (batching window)</span>
+    <span class="str">"batch.size"</span>:         <span class="num">65536</span>,  <span class="cm"># max batch = 64KB; sends immediately when full</span>
+
+    <span class="str">"compression.type"</span>:   <span class="str">"snappy"</span>,  <span class="cm"># compress batch before network send</span>
+    <span class="str">"message.timeout.ms"</span>: <span class="num">30000</span>     <span class="cm"># total time incl. retries; fails after 30s</span>
+}
+
+producer = <span class="fn">Producer</span>(conf)  <span class="cm"># starts network thread + buffer + batch manager</span>
+topic = <span class="str">"orders"</span>
+
+<span class="cm"># ─── DELIVERY CALLBACK ──────────────────────────────────</span>
+<span class="kw">def</span> <span class="fn">delivery_report</span>(err, msg):
+    <span class="cm"># fires on producer.poll() or flush() after broker responds</span>
+    <span class="kw">if</span> err <span class="kw">is not</span> <span class="var">None</span>:
+        <span class="fn">print</span>(<span class="str">"Delivery failed:"</span>, err)      <span class="cm"># log, alert, dead-letter</span>
+    <span class="kw">else</span>:
+        <span class="fn">print</span>(<span class="str">"Delivered to"</span>, msg.<span class="fn">topic</span>(), <span class="str">"partition"</span>, msg.<span class="fn">partition</span>(), <span class="str">"offset"</span>, msg.<span class="fn">offset</span>())
+
+<span class="cm"># ─── GRACEFUL SHUTDOWN ──────────────────────────────────</span>
+running = <span class="var">True</span>
+
+<span class="kw">def</span> <span class="fn">shutdown</span>(sig, frame):
+    <span class="kw">global</span> running
+    running = <span class="var">False</span>  <span class="cm"># lets current loop body finish, then exits</span>
+
+signal.<span class="fn">signal</span>(signal.<span class="var">SIGINT</span>,  shutdown)  <span class="cm"># Ctrl+C</span>
+signal.<span class="fn">signal</span>(signal.<span class="var">SIGTERM</span>, shutdown)  <span class="cm"># docker stop / kill</span>
+
+<span class="cm"># ─── EVENT LOOP ─────────────────────────────────────────</span>
+<span class="kw">while</span> running:
+    event = {
+        <span class="str">"order_id"</span>: <span class="fn">str</span>(uuid.<span class="fn">uuid4</span>()),  <span class="cm"># unique → deterministic partition assignment</span>
+        <span class="str">"user_id"</span>:  <span class="str">"user123"</span>,
+        <span class="str">"amount"</span>:   <span class="num">250</span>,
+        <span class="str">"status"</span>:   <span class="str">"created"</span>
+    }
+
+    message = json.<span class="fn">dumps</span>(event)  <span class="cm"># serialize: dict → JSON string</span>
+
+    producer.<span class="fn">produce</span>(
+        topic=topic,
+        value=message.<span class="fn">encode</span>(<span class="str">"utf-8"</span>),   <span class="cm"># Kafka messages are bytes, not strings</span>
+        key=event[<span class="str">"order_id"</span>],            <span class="cm"># key controls which partition</span>
+        callback=delivery_report           <span class="cm"># register callback for this message</span>
+    )
+
+    producer.<span class="fn">poll</span>(<span class="num">0</span>)    <span class="cm"># non-blocking: drains internal event queue (fires pending callbacks)</span>
+    time.<span class="fn">sleep</span>(<span class="num">2</span>)       <span class="cm"># simulate new event every 2s</span>
+
+<span class="cm"># ─── SHUTDOWN CLEANUP ───────────────────────────────────</span>
+<span class="fn">print</span>(<span class="str">"Flushing pending messages..."</span>)
+producer.<span class="fn">flush</span>()     <span class="cm"># BLOCKS until all buffered messages delivered — no data loss</span>
+sys.<span class="fn">exit</span>(<span class="num">0</span>)</pre>
+    </div>
+  </section>
+
+  <!-- ── SECTION: CONSUMER FULL CODE ── -->
+  <section class="section" id="consumer-code">
+    <div class="section-header">
+      <div class="section-num">C</div>
+      <div class="section-title">consumer.py — Annotated Full Code</div>
+    </div>
+
+    <div class="code-block">
+      <div class="code-header">
+        <span class="code-filename">consumer.py</span>
+        <span class="code-lang">Python</span>
+      </div>
+      <pre><span class="cm"># ─── IMPORTS ────────────────────────────────────────────</span>
+<span class="kw">from</span> confluent_kafka <span class="kw">import</span> <span class="var">Consumer</span>   <span class="cm"># handles: fetch, offset tracking, heartbeats</span>
+<span class="kw">import</span> json
+<span class="kw">import</span> signal
+<span class="kw">import</span> sys
+
+<span class="cm"># ─── CONFIGURATION ──────────────────────────────────────</span>
+conf = {
+    <span class="str">"bootstrap.servers"</span>:       <span class="str">"localhost:9092"</span>,
+
+    <span class="str">"group.id"</span>:                <span class="str">"order-processing-service"</span>,
+    <span class="cm"># group.id groups multiple consumer instances to share partitions</span>
+    <span class="cm"># each partition assigned to exactly ONE consumer in the group</span>
+
+    <span class="str">"enable.auto.commit"</span>:      <span class="var">True</span>,     <span class="cm"># auto-commit offset every 5s</span>
+    <span class="str">"auto.commit.interval.ms"</span>: <span class="num">5000</span>,    <span class="cm"># 5s commit interval</span>
+
+    <span class="str">"auto.offset.reset"</span>:       <span class="str">"earliest"</span>,  <span class="cm"># on first start: read from beginning</span>
+
+    <span class="str">"session.timeout.ms"</span>:      <span class="num">10000</span>,   <span class="cm"># 10s: after this without heartbeat → dead</span>
+    <span class="str">"heartbeat.interval.ms"</span>:   <span class="num">3000</span>,    <span class="cm"># send heartbeat every 3s (≈ timeout/3)</span>
+
+    <span class="str">"max.poll.interval.ms"</span>:    <span class="num">300000</span>   <span class="cm"># 5 min: max time between poll() calls</span>
+                                          <span class="cm"># increase if processing takes a long time</span>
+}
+
+consumer = <span class="fn">Consumer</span>(conf)
+topic = <span class="str">"orders"</span>
+
+consumer.<span class="fn">subscribe</span>([topic])  <span class="cm"># joins consumer group, triggers partition assignment</span>
+
+<span class="cm"># ─── GRACEFUL SHUTDOWN ──────────────────────────────────</span>
+running = <span class="var">True</span>
+
+<span class="kw">def</span> <span class="fn">shutdown</span>(sig, frame):
+    <span class="kw">global</span> running
+    running = <span class="var">False</span>
+
+signal.<span class="fn">signal</span>(signal.<span class="var">SIGINT</span>,  shutdown)
+signal.<span class="fn">signal</span>(signal.<span class="var">SIGTERM</span>, shutdown)
+
+<span class="cm"># ─── POLL LOOP ──────────────────────────────────────────</span>
+<span class="kw">while</span> running:
+
+    msg = consumer.<span class="fn">poll</span>(<span class="num">1.0</span>)
+    <span class="cm"># poll(1.0): block up to 1s waiting for a message</span>
+    <span class="cm"># also sends heartbeats and handles rebalance internally</span>
+
+    <span class="kw">if</span> msg <span class="kw">is</span> <span class="var">None</span>:
+        <span class="kw">continue</span>           <span class="cm"># no message yet — loop and poll again</span>
+
+    <span class="kw">if</span> msg.<span class="fn">error</span>():
+        <span class="fn">print</span>(<span class="str">"Consumer error:"</span>, msg.<span class="fn">error</span>())
+        <span class="kw">continue</span>           <span class="cm"># not an exception — check explicitly and handle</span>
+
+    event = json.<span class="fn">loads</span>(msg.<span class="fn">value</span>().<span class="fn">decode</span>(<span class="str">"utf-8"</span>))  <span class="cm"># bytes → string → dict</span>
+
+    <span class="fn">print</span>(
+        <span class="str">"Received event:"</span>,
+        <span class="str">"topic:"</span>,     msg.<span class="fn">topic</span>(),
+        <span class="str">"partition:"</span>, msg.<span class="fn">partition</span>(),  <span class="cm"># which partition this came from</span>
+        <span class="str">"offset:"</span>,    msg.<span class="fn">offset</span>(),     <span class="cm"># position in the partition log</span>
+        <span class="str">"data:"</span>,      event
+    )
+    <span class="cm"># ← your business logic here (save to DB, call API, etc.)</span>
+
+<span class="cm"># ─── SHUTDOWN CLEANUP ───────────────────────────────────</span>
+<span class="fn">print</span>(<span class="str">"Closing consumer..."</span>)
+consumer.<span class="fn">close</span>()
+<span class="cm"># close() does two things:</span>
+<span class="cm"># 1. commits any pending offsets (if auto.commit=True)</span>
+<span class="cm"># 2. sends LeaveGroup → immediate rebalance (vs waiting 10s for timeout)</span>
+
+sys.<span class="fn">exit</span>(<span class="num">0</span>)</pre>
+    </div>
+  </section>
+
+  <!-- ── SECTION: ERROR HANDLING ── -->
+  <section class="section" id="error-handling">
+    <div class="section-header">
+      <div class="section-num">11</div>
+      <div class="section-title">Error Handling — What Can Go Wrong</div>
+    </div>
+
+    <div class="explain-grid">
+      <div class="explain-card red">
+        <h4>❌ MSG_TIMED_OUT</h4>
+        <p>Producer: message exceeded <code>message.timeout.ms</code> (30s) without delivery. All retries exhausted. Log it, alert, consider dead-letter queue. Do not silently ignore.</p>
+      </div>
+      <div class="explain-card red">
+        <h4>❌ UNKNOWN_TOPIC_OR_PART</h4>
+        <p>Topic doesn't exist and <code>auto.create.topics.enable=false</code> on the broker. Create the topic before producing, or enable auto-create in dev.</p>
+      </div>
+      <div class="explain-card yellow">
+        <h4>⚠ OFFSET_OUT_OF_RANGE</h4>
+        <p>Consumer trying to read an offset that no longer exists (log was compacted/deleted). Happens when consumer is behind the retention window. Handle with <code>auto.offset.reset</code>.</p>
+      </div>
+      <div class="explain-card yellow">
+        <h4>⚠ REBALANCE_IN_PROGRESS</h4>
+        <p>Consumer group is reassigning partitions. During this time, commits may fail. Implement <code>on_assign</code> and <code>on_revoke</code> callbacks in production to handle gracefully.</p>
+      </div>
+    </div>
+  </section>
+
+</main>
+</div>
+
+</body>
+</html>
