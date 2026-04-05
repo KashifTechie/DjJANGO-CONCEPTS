@@ -192,9 +192,9 @@ const x = 10;
 
 # 💡 Key Takeaway
 
-* Use **`let`** for variables that change
-* Use **`const`** by default
-* Avoid **`var`** in modern JavaScript
+* Use **`let`** when the value needs to be updated (re-assigned)
+* Use **`const`** when the variable should NOT be re-assigned (must be initialized at declaration), the reference cannot change.
+* Avoid **`var`** in modern JavaScript due to function scope and hoisting issues
 
 
 Got it — I cleaned it up so it **matches your existing style perfectly** (same heading levels, spacing, tone, and structure).
