@@ -1132,3 +1132,94 @@ print(result.model_dump())
 - You get dot-notation access (`result.title`), Pydantic validation, and `.model_dump()` for serialization
 
 > `PydanticOutputParser` gives you a typed Python object with full Pydantic validation and dot-notation access.
+
+**What this code does:**
+- `search_type="mmr"` — switches from plain similarity search to the MMR algorithm
+- `fetch_k=20` — first retrieves 20 candidates by pure similarity
+- MMR then re-ranks: picks the most relevant doc, then repeatedly picks the next doc that is both relevant AND different from already-selected docs
+- `lambda_mult=0.5` — 0 = max diversity (ignore relevance), 1 = max relevance (same as regular search), 0.5 = balanced
+- Result: 5 documents that are relevant but cover different aspects — avoids returning 5 nearly identical chunks
+
+---
+
+### 13.4 Multi-Query Retriever
+
+```python
+from langchain.retrievers.multi_query import MultiQueryRetriever
+from langchain_openai import ChatOpenAI
+from langchain_chroma import Chroma
+from langchain_openai import OpenAIEmbeddings
+import logging
+
+logging.basicConfig()
+logging.getLogger("langchain.retrievers.multi_query").setLevel(logging.INFO)
+
+vectorstore = Chroma(persist_directory="./chroma_db", embedding_function=OpenAIEmbeddings())
+llm         = ChatOpenAI(model="gpt-4o")
+
+retriever = MultiQueryRetriever.from_llm(
+    retriever=vectorstore.as_retriever(search_kwargs={"k": 3}),
+    llm=llm
+)
+
+docs = retriever.invoke("What are LangChain agents?")
+print(f"Retrieved {len(docs)} unique documents")
+```
+
+**Imports explained:**
+- `MultiQueryRetriever` — wraps an existing retriever; uses an LLM to generate multiple phrasings of the original query; runs each query through the base retriever; deduplicates all results
+- `logging` — Python's standard logging module; used here to print the LLM-generated query variations so you can see what it comes up with
+
+**What this code does:**
+- `MultiQueryRetriever.from_llm(retriever=..., llm=...)` — wraps the base retriever with multi-query logic
+- When you call `.invoke("What are LangChain agents?")`, the LLM first generates 3-5 alternative phrasings like "How do autonomous agents work in LangChain?", "Explain LangChain agent tools", etc.
+- Each variation is sent to the base retriever independently
+- All returned docs are combined and deduplicated — more comprehensive coverage than a single query
+
+---
+
+### 13.5 Contextual Compression Retriever
+
+```python
+from langchain.retrievers import ContextualCompressionRetriever
+from langchain.retrievers.document_compressors import LLMChainExtractor
+from langchain_openai import ChatOpenAI
+from langchain_chroma import Chroma
+from langchain_openai import OpenAIEmbeddings
+
+vectorstore    = Chroma(persist_directory="./chroma_db", embedding_function=OpenAIEmbeddings())
+base_retriever = vectorstore.as_retriever(search_kwargs={"k": 4})
+llm            = ChatOpenAI(model="gpt-4o", temperature=0)
+
+compressor = LLMChainExtractor.from_llm(llm)
+
+retriever = ContextualCompressionRetriever(
+    base_compressor=compressor,
+    base_retriever=base_retriever
+)
+
+query = "What is the memory component in LangChain?"
+docs  = retriever.invoke(query)
+
+for doc in docs:
+    print(f"Compressed: {doc.page_content}")
+    print("---")
+```
+
+**Imports explained:**
+- `ContextualCompressionRetriever` — a retriever wrapper that post-processes retrieved documents; instead of returning full chunks, it compresses each chunk to just the relevant parts
+- `LLMChainExtractor` — the specific compressor that uses an LLM to read each retrieved chunk alongside the query and extract only the sentences that actually answer the question
+
+**What this code does:**
+- `base_retriever` fetches 4 chunks using normal similarity search — these chunks may contain lots of irrelevant sentences
+- `LLMChainExtractor.from_llm(llm)` — creates a compressor that calls the LLM with each chunk and the query, asking "extract only the relevant parts"
+- `ContextualCompressionRetriever` wraps everything: retrieve → compress → return focused snippets
+- Result: shorter, more focused documents — less noise for the final LLM, better quality answers
+
+---
+
+## 14. RAG (Retrieval-Augmented Generation)
+
+### What is RAG?
+
+RAG combines a **retrieval system** with a **language model** to generate answers grounded in your own documents — not just the model's training data.
