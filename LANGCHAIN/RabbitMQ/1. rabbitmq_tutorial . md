@@ -1,0 +1,601 @@
+# RabbitMQ in Python — Production-Level Setup for Real Projects
+
+Now we move from architecture to **real production design in Python**.
+
+This is where most tutorials fail—they show one queue, one producer, one consumer.
+
+Real systems are not like that.
+
+Real systems have:
+
+* multiple services
+* multiple exchanges
+* many queues
+* routing rules
+* retries
+* dead-letter queues
+* structured messages
+* versioning
+
+So let’s build this properly.
+
+---
+
+# Core Question First
+
+> Producer has exchange, queue, routing key in payload?
+
+Not exactly.
+
+A producer **does not send queue name in the message payload** unless using default exchange.
+
+What producer actually sends to broker:
+
+```text
+(exchange_name, routing_key, properties, body)
+```
+
+Queue is determined by **exchange bindings**, not by producer.
+
+That distinction is critical.
+
+---
+
+# Production Mental Model
+
+---
+
+## Wrong Beginner Thinking
+
+```text
+Producer --> Queue
+```
+
+---
+
+## Correct Production Thinking
+
+```text
+Producer --> Exchange --> Queue(s) --> Consumer(s)
+```
+
+---
+
+The exchange is the stable contract.
+
+Queues can change without changing producer code.
+
+That gives flexibility.
+
+---
+
+# 1) Can We Have Multiple Exchanges and Multiple Queues?
+
+Yes — and in production, you usually should.
+
+RabbitMQ is designed for this.
+
+---
+
+## Example Architecture
+
+```text
+                           +------------------+
+                           |   user.events    |
+                           |   (topic ex)     |
+                           +------------------+
+                             /      |      \
+                            /       |       \
+                           v        v        v
+                    +---------+ +---------+ +---------+
+                    | emailQ  | | auditQ  | | cacheQ  |
+                    +---------+ +---------+ +---------+
+
+                           +------------------+
+                           |   billing.cmd    |
+                           |   (direct ex)    |
+                           +------------------+
+                               /         \
+                              v           v
+                        +----------+  +----------+
+                        | invoiceQ |  | ledgerQ  |
+                        +----------+  +----------+
+```
+
+---
+
+This is common in complex systems.
+
+Different exchanges serve different domains.
+
+---
+
+# 2) Why Multiple Exchanges?
+
+Because exchanges represent **message categories / business domains**.
+
+---
+
+## Typical Separation
+
+| Domain         | Exchange               |
+| -------------- | ---------------------- |
+| User lifecycle | `user.events`          |
+| Billing        | `billing.commands`     |
+| Notifications  | `notifications.events` |
+| Analytics      | `analytics.stream`     |
+
+---
+
+This keeps architecture organized.
+
+---
+
+# 3) Why Multiple Queues?
+
+Because different consumers need different workloads.
+
+One message can go to multiple queues.
+
+Each queue can scale independently.
+
+---
+
+---
+
+# 4) How Routing Key Helps
+
+Routing key is the label attached to a message.
+
+Exchange uses it to decide destination.
+
+---
+
+## Example
+
+```text
+user.created
+user.deleted
+billing.invoice.generated
+```
+
+---
+
+With topic exchange:
+
+```text
+user.*
+billing.#
+```
+
+---
+
+This creates powerful routing.
+
+---
+
+# Example Routing
+
+```text
+Message routing key = user.created
+```
+
+Bound queues:
+
+```text
+user.*
+```
+
+→ receives it
+
+```text
+billing.*
+```
+
+→ ignored
+
+---
+
+So routing key acts like a category path.
+
+---
+
+---
+
+# 5) Production-Level Python Project Structure
+
+```text
+rabbitmq_project/
+│
+├── messaging/
+│   ├── connection.py
+│   ├── exchanges.py
+│   ├── publisher.py
+│   ├── consumer.py
+│   ├── schemas.py
+│   ├── topology.py
+│   └── settings.py
+│
+├── services/
+│   ├── user_service.py
+│   ├── billing_service.py
+│   └── notification_service.py
+│
+└── main.py
+```
+
+---
+
+This separates concerns.
+
+---
+
+# 6) Production Setup — Step by Step
+
+---
+
+# connection.py
+
+```python
+import pika
+
+def get_connection():
+    params = pika.ConnectionParameters(
+        host="localhost",
+        heartbeat=60,
+        blocked_connection_timeout=30
+    )
+    return pika.BlockingConnection(params)
+```
+
+---
+
+Reliable connection settings.
+
+---
+
+---
+
+# exchanges.py
+
+```python
+USER_EXCHANGE = "user.events"
+BILLING_EXCHANGE = "billing.commands"
+
+TOPIC = "topic"
+DIRECT = "direct"
+```
+
+---
+
+Centralized exchange definitions.
+
+---
+
+---
+
+# topology.py
+
+```python
+from messaging.connection import get_connection
+from messaging.exchanges import *
+
+def setup_topology():
+    conn = get_connection()
+    ch = conn.channel()
+
+    ch.exchange_declare(exchange=USER_EXCHANGE, exchange_type=TOPIC, durable=True)
+    ch.exchange_declare(exchange=BILLING_EXCHANGE, exchange_type=DIRECT, durable=True)
+
+    ch.queue_declare(queue="email_queue", durable=True)
+    ch.queue_declare(queue="audit_queue", durable=True)
+
+    ch.queue_bind(exchange=USER_EXCHANGE, queue="email_queue", routing_key="user.created")
+    ch.queue_bind(exchange=USER_EXCHANGE, queue="audit_queue", routing_key="user.*")
+
+    conn.close()
+```
+
+---
+
+This defines broker topology.
+
+---
+
+---
+
+# 7) Production Publisher
+
+---
+
+# publisher.py
+
+```python
+import json
+import pika
+from messaging.connection import get_connection
+
+class Publisher:
+    def __init__(self):
+        self.connection = get_connection()
+        self.channel = self.connection.channel()
+
+    def publish(self, exchange, routing_key, payload):
+        self.channel.basic_publish(
+            exchange=exchange,
+            routing_key=routing_key,
+            body=json.dumps(payload),
+            properties=pika.BasicProperties(
+                delivery_mode=2,
+                content_type="application/json"
+            )
+        )
+
+    def close(self):
+        self.connection.close()
+```
+
+---
+
+Reusable publisher.
+
+---
+
+---
+
+# 8) Publishing Events
+
+```python
+from messaging.publisher import Publisher
+from messaging.exchanges import USER_EXCHANGE
+
+pub = Publisher()
+
+pub.publish(
+    exchange=USER_EXCHANGE,
+    routing_key="user.created",
+    payload={
+        "user_id": 101,
+        "email": "test@example.com"
+    }
+)
+
+pub.close()
+```
+
+---
+
+Notice:
+
+Producer does **not care which queue gets it**.
+
+Only exchange + routing key.
+
+---
+
+---
+
+# 9) Production Consumer
+
+```python
+import json
+from messaging.connection import get_connection
+
+def callback(ch, method, properties, body):
+    data = json.loads(body)
+
+    try:
+        print("Processing:", data)
+
+        ch.basic_ack(delivery_tag=method.delivery_tag)
+
+    except Exception:
+        ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
+
+conn = get_connection()
+ch = conn.channel()
+
+ch.basic_qos(prefetch_count=10)
+
+ch.basic_consume(queue="email_queue", on_message_callback=callback)
+
+ch.start_consuming()
+```
+
+---
+
+Production-grade ACK/NACK handling.
+
+---
+
+---
+
+# 10) How Complex Projects Scale
+
+---
+
+## Pattern: Event-Driven Domains
+
+```text
+user.created        --> notifications
+                    --> analytics
+                    --> audit logs
+
+payment.completed   --> invoices
+                    --> rewards
+                    --> reports
+```
+
+---
+
+Each service binds its own queue.
+
+No tight coupling.
+
+---
+
+---
+
+# 11) Why Exchange-Centric Design Matters
+
+Because queues are implementation details.
+
+Exchanges define public contracts.
+
+---
+
+## If Queue Changes?
+
+No producer changes needed.
+
+Only bindings updated.
+
+---
+
+That is huge in production.
+
+---
+
+---
+
+# 12) Best Practices
+
+---
+
+## Use Topic Exchanges for Flexibility
+
+Better than direct in many systems.
+
+---
+
+---
+
+## Standardize Routing Keys
+
+Example:
+
+```text
+domain.entity.action
+```
+
+Like:
+
+```text
+user.account.created
+billing.invoice.paid
+```
+
+---
+
+---
+
+## Use JSON Schema / Versioning
+
+Include version.
+
+```json
+{
+  "version": 1,
+  "event": "user.created"
+}
+```
+
+---
+
+---
+
+## Use Dead Letter Queues
+
+For failures.
+
+---
+
+---
+
+## Use Separate Exchanges by Domain
+
+Avoid one giant exchange.
+
+---
+
+---
+
+# Final Answer to Your Doubts
+
+---
+
+## Can we have multiple exchanges?
+
+Yes. Common in production.
+
+---
+
+---
+
+## Can we have multiple queues?
+
+Yes. Essential for scaling.
+
+---
+
+---
+
+## Can one exchange connect to many queues?
+
+Yes.
+
+---
+
+---
+
+## Can one queue receive from many exchanges?
+
+Yes.
+
+---
+
+---
+
+## Does routing key matter?
+
+Absolutely. It controls routing.
+
+---
+
+---
+
+## Does producer need queue info?
+
+No—only exchange + routing key.
+
+---
+
+---
+
+# Final Production Architecture
+
+```text
+                +-------------------+
+                |  Producer Service |
+                +-------------------+
+                          |
+                          v
+                +-------------------+
+                |   Exchange Layer  |
+                +-------------------+
+                    /      |      \
+                   /       |       \
+                  v        v        v
+            +---------+ +---------+ +---------+
+            | Queue A | | Queue B | | Queue C |
+            +---------+ +---------+ +---------+
+                  |         |          |
+                  v         v          v
+             Consumer   Consumer   Consumer
+```
+
+---
+
+That is how RabbitMQ should be designed in serious Python systems.
+
+Next step would be **retry queues, DLQ, delayed messaging, and Celery integration**—which is where production systems become truly resilient.
